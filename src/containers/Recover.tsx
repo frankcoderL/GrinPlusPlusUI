@@ -1,9 +1,8 @@
 import { Form, HorizontallyCenter } from "../components/styled";
 import React, { Suspense } from "react";
 
-import { Button } from "@blueprintjs/core";
+import { Text } from "@blueprintjs/core";
 import { LoadingComponent } from "../components/extras/Loading";
-import { useHistory } from "react-router-dom";
 import { useStoreActions } from "../hooks";
 import { useTranslation } from "react-i18next";
 
@@ -40,8 +39,6 @@ export const RestoreContainer = () => {
     (actions) => actions.restoreWallet
   );
 
-  let history = useHistory();
-
   return (
     <Suspense fallback={renderLoader()}>
       <NavigationBarContainer
@@ -56,12 +53,7 @@ export const RestoreContainer = () => {
           <RestoreWalletContainer />
         </Form>
         <HorizontallyCenter>
-          <Button
-            minimal={true}
-            style={{ width: "200px" }}
-            text={t("cancel")}
-            onClick={() => history.push("/login")}
-          />
+          <Text>{t("restore_wallet_warning")}</Text>
         </HorizontallyCenter>
       </div>
       <div className="footer">

@@ -1,14 +1,44 @@
-import { WalletLogsComponent } from "../../components/wallet/Logs";
-import React from "react";
-import { useStoreState } from "../../hooks";
+import React, { Suspense } from "react";
+import { useStoreActions } from "../../hooks";
+
+import { useTranslation } from "react-i18next";
+import { LoadingComponent } from "../../components/extras/Loading";
+
+const NavigationBarContainer = React.lazy(() =>
+  import("../common/NavigationBar").then((module) => ({
+    default: module.NavigationBarContainer,
+  }))
+);
+
+const TextFileComponent = React.lazy(() =>
+  import("./../../components/extras/TextFile").then((module) => ({
+    default: module.TextFileComponent,
+  }))
+);
+
+const StatusBarContainer = React.lazy(() =>
+  import("../common/StatusBar").then((module) => ({
+    default: module.StatusBarContainer,
+  }))
+);
+
+const renderLoader = () => <LoadingComponent />;
 
 export const WalletLogsContainer = () => {
-  const { logs } = useStoreState((state) => state.wallet);
+  const { t } = useTranslation();
+  const { readWalletLogs } = useStoreActions((state) => state.nodeSummary);
 
   return (
-    <div>
-      <br />
-      <WalletLogsComponent logs={logs} />
-    </div>
+    <Suspense fallback={renderLoader()}>
+      <NavigationBarContainer title={t("wallet_logs")} />
+      <div className="content">
+        <div style={{ width: "100%", height: "calc(100vh - 130px)" }}>
+          <TextFileComponent content={readWalletLogs()} />
+        </div>
+      </div>
+      <div className="footer">
+        <StatusBarContainer />
+      </div>
+    </Suspense>
   );
 };

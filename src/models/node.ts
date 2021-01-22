@@ -17,7 +17,8 @@ export interface NodeSummaryModel {
     inbound: number;
   };
   userAgent: string;
-  updateInterval: number;
+  CheckStatusInterval: number;
+  HealthCheckInterval: number;
   waitingResponse: boolean;
   connectedPeers: IPeer[];
   updateStatus: Action<
@@ -45,6 +46,9 @@ export interface NodeSummaryModel {
   setConnectedPeers: Action<NodeSummaryModel, IPeer[]>;
   setWaitingResponse: Action<NodeSummaryModel, boolean>;
   updatedAt: number;
+  readNodeLogs: Thunk<NodeSummaryModel, undefined, Injections, StoreModel>;
+  readWalletLogs: Thunk<NodeSummaryModel, undefined, Injections, StoreModel>;
+  readUILogs: Thunk<NodeSummaryModel, undefined, Injections, StoreModel>;
 }
 
 const nodeSummary: NodeSummaryModel = {
@@ -54,7 +58,8 @@ const nodeSummary: NodeSummaryModel = {
   blocks: 0,
   network: { height: 0, outbound: 0, inbound: 0 },
   userAgent: "",
-  updateInterval: 1000,
+  CheckStatusInterval: 1000,
+  HealthCheckInterval: 10000,
   connectedPeers: [],
   waitingResponse: false,
   updateStatus: action((state, node) => {
@@ -125,6 +130,32 @@ const nodeSummary: NodeSummaryModel = {
     state.waitingResponse = waiting;
   }),
   updatedAt: 0,
+  readNodeLogs: thunk(
+    (actions, payload, { injections, getStoreState }): string => {
+      const { utilsService } = injections;
+      const settings = getStoreState().settings;
+      const sep = require("path").sep;
+      return utilsService.getTextFileContent(
+        `${settings.nodeDataPath}${sep}LOGS${sep}Node.log`
+      );
+    }
+  ),
+  readWalletLogs: thunk(
+    (actions, payload, { injections, getStoreState }): string => {
+      const { utilsService } = injections;
+      const settings = getStoreState().settings;
+      const sep = require("path").sep;
+      return utilsService.getTextFileContent(
+        `${settings.nodeDataPath}${sep}LOGS${sep}Wallet.log`
+      );
+    }
+  ),
+  readUILogs: thunk(
+    (actions, payload, { injections, getStoreState }): string => {
+      const { utilsService } = injections;
+      return utilsService.getTextFileContent(utilsService.getUiLogsLocation());
+    }
+  ),
 };
 
 export default nodeSummary;

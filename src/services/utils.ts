@@ -1,36 +1,9 @@
-export const readFileAsText = (file: File): Promise<string> => {
-  const reader = new FileReader();
-  return new Promise((resolve, reject) => {
-    reader.onabort = () => reject("Unknown error");
-    reader.onerror = () => reject(reader.error);
-    reader.onload = () => resolve(reader.result?.toString());
-    reader.readAsText(file, "utf-8");
-  });
-};
-
 export const formatGrinAmount = (amount: number): number => {
   return amount / Math.pow(10, 9);
 };
 
-export const getFileExtension = (fileName: string): string | undefined => {
-  const re = /(?:\.([^.]+))?$/;
-  const extension = re.exec(fileName);
-  if (extension && extension[1]) return extension[1];
-  return undefined;
-};
-
-export const validateExtension = (fileName: string, ext: string): boolean => {
-  const re = /(?:\.([^.]+))?$/;
-  const extension: RegExpExecArray | null = re.exec(fileName);
-  if (extension && extension[1] !== ext) return false;
-  return true;
-};
-
-export const getTextFileContent = async (file: File): Promise<string> => {
-  const content = await readFileAsText(file)
-    .then((content) => content)
-    .catch(() => "");
-  return content;
+export const getTextFileContent = (filePath: string): string => {
+  return require("fs").readFileSync(filePath, "utf8");
 };
 
 export const validateUrl = (url: string): boolean => {
@@ -48,13 +21,6 @@ export const validateSlatepackAddress = (address: string): boolean => {
   return false;
 };
 
-export const validateSlatepack = (slate: string): boolean => {
-  return (
-    slate.toUpperCase().includes("BEGINSLATEPACK.") &&
-    slate.toUpperCase().includes("ENDSLATEPACK.")
-  );
-};
-
 export const validateAddress = (
   address: string
 ): "http" | "slatepack" | false => {
@@ -65,48 +31,36 @@ export const validateAddress = (
   return false;
 };
 
-export const fileExists = (path: string): boolean => {
-  return require("fs").existsSync(path);
+export const validateSlatepack = (slate: string): boolean => {
+  return (
+    slate.toUpperCase().includes("BEGINSLATEPACK.") &&
+    slate.toUpperCase().includes("ENDSLATEPACK.")
+  );
 };
 
-export const writeTextFile = (path: string, text: string) => {
-  require("fs").writeFileSync(path, text);
-};
+export const getUiLogsLocation = function(): string {
+  const path = require("path");
+  /*
+  By default, it writes logs to the following locations:
+    on Linux: ~/.config/Grin++/logs/renderer.log
+    on macOS: ~/Library/Logs/Grin++/renderer.log
+    on Windows: %USERPROFILE%\AppData\Roaming\Grin++\logs\renderer.log
+  */
+  const appName = "Grin++";
+  const home = require("os").homedir();
 
-export const getHomePath = (): string => {
-  return require("electron").remote.app.getPath("home");
-};
+  const location = (() => {
+    switch (require("electron").remote.process.platform) {
+      case "linux":
+        return `${home}${path.sep}.config${path.sep}${appName}${path.sep}logs${path.sep}renderer.log`;
+      case "darwin":
+        return `${home}${path.sep}Library${path.sep}Logs${path.sep}${appName}${path.sep}renderer.log`;
+      case "win32":
+        return `${home}${path.sep}AppData${path.sep}Roaming${path.sep}${appName}${path.sep}logs${path.sep}renderer.log`;
 
-export const getPathSeparator = (): string => {
-  switch (require("electron").remote.process.platform) {
-    case "win32":
-      return `\\`;
-    default:
-      return "/";
-  }
-};
-
-export const validateFilePath = function(filePath: string): boolean {
-  try {
-    const fs = require("fs");
-    const path = require("path").dirname(filePath);
-    const info = fs.lstatSync(path);
-    return info.isDirectory();
-  } catch (e) {
-    return false;
-  }
-};
-
-export const saveAs = async (
-  path: string,
-  filters: { name: string; extensions: string[] }[] = [
-    { name: "Tx Files", extensions: ["tx"] },
-    { name: "All Files", extensions: ["*"] },
-  ]
-): Promise<{ canceled: boolean; filePath: string }> => {
-  let results = await require("electron").remote.dialog.showSaveDialog({
-    defaultPath: path,
-    filters: filters,
-  });
-  return { canceled: results.canceled, filePath: results.filePath };
+      default:
+        throw new Error("Unknown Platform");
+    }
+  })();
+  return path.normalize(location);
 };

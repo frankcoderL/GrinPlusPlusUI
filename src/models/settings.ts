@@ -1,4 +1,4 @@
-import { Action, ThunkOn, action, thunkOn } from "easy-peasy";
+import { Action, Thunk, ThunkOn, action, thunk, thunkOn } from "easy-peasy";
 
 import { Injections } from "../store";
 import { StoreModel } from ".";
@@ -38,6 +38,15 @@ export interface SettingsModel {
   setGrinChckAddress: Action<SettingsModel, string>;
   toggleConfirmationDialog: Action<SettingsModel>;
   onSettingsChanged: ThunkOn<SettingsModel, Injections, StoreModel>;
+  getNodeSettings: Thunk<SettingsModel, undefined, Injections, StoreModel>;
+  setNodeSettings: Action<
+    SettingsModel,
+    {
+      mininumPeers: number;
+      maximumPeers: number;
+      minimumConfirmations: number;
+    }
+  >;
 }
 
 const settings: SettingsModel = {
@@ -99,35 +108,52 @@ const settings: SettingsModel = {
       storeActions.settings.setConfirmations,
     ],
     (actions, target, { injections }) => {
-      const configFile = injections.nodeService.getConfigFilePath();
-      let property:
-        | "MIN_PEERS"
-        | "MAX_PEERS"
-        | "MIN_CONFIRMATIONS"
-        | undefined = undefined;
       const [
         setMininumPeers,
         setMaximumPeers,
         setConfirmations,
       ] = target.resolvedTargets;
+
       switch (target.type) {
         case setMininumPeers:
-          property = "MIN_PEERS";
+          injections.nodeService.updateSettings("min_peers", target.payload);
           break;
         case setMaximumPeers:
-          property = "MAX_PEERS";
+          injections.nodeService.updateSettings("max_peers", target.payload);
           break;
         case setConfirmations:
-          property = "MIN_CONFIRMATIONS";
+          injections.nodeService.updateSettings(
+            "min_confirmations",
+            target.payload
+          );
           break;
       }
-      injections.nodeService.updateSettings(
-        configFile,
-        property,
-        target.payload
-      );
     }
   ),
+  getNodeSettings: thunk(
+    async (
+      actions,
+      payload,
+      { injections, getStoreActions }
+    ): Promise<boolean> => {
+      const { nodeService } = injections;
+
+      const settings = await nodeService.getNodeSettings();
+
+      actions.setNodeSettings({
+        mininumPeers: settings.minimumPeers,
+        maximumPeers: settings.maximumPeers,
+        minimumConfirmations: settings.minimumConfirmations,
+      });
+
+      return true;
+    }
+  ),
+  setNodeSettings: action((state, settings) => {
+    state.mininumPeers = settings.mininumPeers;
+    state.maximumPeers = settings.maximumPeers;
+    state.confirmations = settings.minimumConfirmations;
+  }),
 };
 
 export default settings;

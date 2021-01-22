@@ -12,9 +12,15 @@ export interface WalletSummaryModel {
   unconfirmed: number;
   locked: number;
   updateSummaryInterval: number;
-  selectedTx: number;
+  selectedTxToCancel: number;
+  selectedTxToRepost: number;
+  selectedTxToFinalize: number;
+  selectedSlatepackMessage: string;
   transactions: ITransaction[] | undefined;
-  setSelectedTx: Action<WalletSummaryModel, number>;
+  setSelectedTxToCancel: Action<WalletSummaryModel, number>;
+  setSelectedTxToRepost: Action<WalletSummaryModel, number>;
+  setSelectedTxToFinalize: Action<WalletSummaryModel, number>;
+  setSelectedSlatepackMessage: Action<WalletSummaryModel, string>;
   updateSummary: Action<
     WalletSummaryModel,
     | {
@@ -92,10 +98,22 @@ const walletSummary: WalletSummaryModel = {
   unconfirmed: 0,
   locked: 0,
   updateSummaryInterval: 5000,
-  selectedTx: -1,
+  selectedTxToCancel: -1,
+  selectedTxToRepost: -1,
+  selectedTxToFinalize: -1,
+  selectedSlatepackMessage: "",
   transactions: undefined,
-  setSelectedTx: action((state, id) => {
-    state.selectedTx = id;
+  setSelectedTxToCancel: action((state, id) => {
+    state.selectedTxToCancel = id;
+  }),
+  setSelectedTxToRepost: action((state, id) => {
+    state.selectedTxToRepost = id;
+  }),
+  setSelectedTxToFinalize: action((state, id) => {
+    state.selectedTxToFinalize = id;
+  }),
+  setSelectedSlatepackMessage: action((state, slatepack) => {
+    state.selectedSlatepackMessage = slatepack;
   }),
   updateSummary: action((state, payload) => {
     if (payload === undefined) {
@@ -255,6 +273,7 @@ const walletSummary: WalletSummaryModel = {
           wallet
         );
         actions.setWalletReachable(reachable);
+        return reachable;
       } catch (error) {
         throw new Error(error);
       }

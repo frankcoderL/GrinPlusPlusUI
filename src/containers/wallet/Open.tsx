@@ -3,6 +3,7 @@ import React, { Suspense, useCallback, useEffect } from "react";
 import { useStoreActions, useStoreState } from "../../hooks";
 
 import { LoadingComponent } from "../../components/extras/Loading";
+
 import { Redirect } from "react-router-dom";
 
 const NoAccountsComponent = React.lazy(() =>
@@ -102,6 +103,45 @@ export const OpenWalletContainer = () => {
     },
     [setUsername]
   );
+
+  const { setAction: setWalletAction, deleteWallet } = useStoreActions(
+    (state) => state.wallet
+  );
+
+  const removeWallet = useCallback(async () => {
+    if (username === undefined || password === undefined) return;
+    setWaitingResponse(true);
+    try {
+      await deleteWallet({
+        username: username,
+        password: password,
+      });
+      setUsername("");
+      setPassword("");
+    } catch (error) {
+      Toaster.create({ position: Position.BOTTOM }).show({
+        message: error.message,
+        intent: Intent.DANGER,
+        icon: "warning-sign",
+      });
+    }
+
+    setAccounts(undefined);
+    setAccounts(await getAccounts());
+    setWalletAction(undefined); // to close prompt
+    setWaitingResponse(false);
+  }, [
+    username,
+    password,
+    setUsername,
+    setWaitingResponse,
+    deleteWallet,
+    setWalletAction,
+    setPassword,
+    getAccounts,
+    setAccounts,
+  ]);
+
   const { isLoggedIn } = useStoreState((state) => state.session);
 
   return (
@@ -121,6 +161,7 @@ export const OpenWalletContainer = () => {
             setUsername("");
             setPassword("");
           }}
+          deleteWalletButtonCb={removeWallet}
           waitingResponse={waitingResponse}
           passwordButtonCb={onOpenWalletButtonClicked}
           connected={status.toLocaleLowerCase() !== "not connected"}

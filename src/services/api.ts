@@ -88,7 +88,7 @@ export class BaseApi {
       | "node_status"
       | "resync_blockchain"
       | "connected_peers"
-      | "accounts"
+      | "list_wallets"
       | "receive"
       | "send"
       | "finalize"
@@ -99,14 +99,14 @@ export class BaseApi {
       | "create_wallet"
       | "restore_wallet"
       | "wallet_summary"
-      | "scan_outputs"
       | "estimate_fee"
       | "cancel_tx"
       | "repost_tx"
-      | "retrieve_outputs"
+      | "list_outputs"
       | "get_seed"
       | "list_txs"
       | "delete_wallet"
+      | "scan_for_outputs"
   ): string {
     switch (call) {
       case "node_status":
@@ -115,8 +115,8 @@ export class BaseApi {
         return `${this._getNodeURL()}/resync`;
       case "connected_peers":
         return `${this._getNodeURL()}/peers/connected`;
-      case "accounts":
-        return `${this._getOwnerURL()}/accounts`;
+      case "list_wallets":
+        return this._getOwnerRPCURL();
       case "shutdown":
         return `${this._getNodeURL()}/shutdown`;
       case "send":
@@ -149,10 +149,10 @@ export class BaseApi {
         return this._getOwnerRPCURL();
       case "repost_tx":
         return this._getOwnerRPCURL();
-      case "scan_outputs":
-        return `${this._getOwnerURL()}/update_wallet`;
-      case "retrieve_outputs":
-        return `${this._getOwnerURL()}/retrieve_outputs`;
+      case "list_outputs":
+        return this._getOwnerRPCURL();
+      case "scan_for_outputs":
+        return this._getOwnerRPCURL();
       default:
         return "";
     }
@@ -210,7 +210,7 @@ export class BaseApi {
   ): Promise<any> {
     const request = window.require("request");
     let options = {
-      timeout: 60000,
+      timeout: 180000,
       url: url,
       agent: false,
       pool: { maxSockets: 5 },

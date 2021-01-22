@@ -6,61 +6,81 @@ import { InitializerContainer } from "./containers/Initializer";
 import React from "react";
 import { RestoreContainer } from "./containers/Recover";
 import { SendGrinContainer } from "./containers/SendGrins";
+import { ReceiveGrinContainer } from "./containers/ReceiveGrins";
 import { SignInContainer } from "./containers/SignIn";
 import { SignUpContainer } from "./containers/SingUp";
 import { StatusContainer } from "./containers/Status";
-import { LogsContainer } from "./containers/Logs";
+import { HelpContainer } from "./containers/Help";
+import { NodeLogsContainer } from "./containers/node/Logs";
+import { WalletLogsContainer } from "./containers/wallet/Logs";
+import { UILogsContainer } from "./containers/ui/Logs";
 import { StoreProvider } from "easy-peasy";
 import { WalletContainer } from "./containers/Wallet";
 import store from "./store";
 import { useInterval } from "./helpers";
 
 const App: React.FC = () => {
-  useInterval(async () => {
-    if (!store.getState().wallet.isWalletInitialized) return;
-    try {
-      store
-        .getActions()
-        .nodeSummary.updateStatus(
-          await store.getActions().nodeSummary.checkStatus()
-        );
-    } catch (error) {
-      require("electron-log").error(
-        `Error trying to get Node Status: ${error.message}`
-      );
-      store.getActions().nodeSummary.updateStatus(undefined);
-      if (store.getState().wallet.isWalletInitialized) {
-        try {
-          require("electron-log").info("Performing HealthCheck...");
-          if (await store.getActions().wallet.checkNodeHealth()) {
-            require("electron-log").info("HealthCheck passed, all good!");
-          } else {
-            require("electron-log").info(
-              "HealthCheck failed: Backend is not Running"
-            );
-          }
-        } catch (error) {
-          require("electron-log").error(`HealthCheck failed: ${error}`);
-        }
+  useInterval(
+    async () => {
+      if (!store.getState().wallet.isWalletInitialized) {
+        store.getActions().nodeSummary.updateStatus(undefined);
+        return;
       }
-    }
-  }, store.getState().nodeSummary.updateInterval, []);
-
-  useInterval(async () => {
-    if (store.getState().nodeSummary.status.toLowerCase() === "not connected")
-      return;
-    try {
-      store
-        .getActions()
-        .nodeSummary.setConnectedPeers(
-          await store.getActions().nodeSummary.getConnectedPeers()
+      try {
+        store
+          .getActions()
+          .nodeSummary.updateStatus(
+            await store.getActions().nodeSummary.checkStatus()
+          );
+      } catch (error) {
+        require("electron-log").error(
+          `Error trying to get Node Status: ${error.message}`
         );
-    } catch (error) {
-      require("electron-log").error(
-        `Error trying to get Connected Peers: ${error.message}`
-      );
-    }
-  }, 5000, []);
+        store.getActions().nodeSummary.updateStatus(undefined);
+      }
+    },
+    store.getState().nodeSummary.CheckStatusInterval,
+    []
+  );
+
+  useInterval(
+    async () => {
+      try {
+        require("electron-log").info("Performing HealthCheck...");
+        if (await store.getActions().wallet.checkNodeHealth()) {
+          require("electron-log").info("HealthCheck passed, all good!");
+        } else {
+          require("electron-log").info(
+            "HealthCheck failed: Backend is not Running"
+          );
+        }
+      } catch (error) {
+        require("electron-log").error(`HealthCheck failed: ${error}`);
+      }
+    },
+    store.getState().nodeSummary.HealthCheckInterval,
+    []
+  );
+
+  useInterval(
+    async () => {
+      if (store.getState().nodeSummary.status.toLowerCase() === "not connected")
+        return;
+      try {
+        store
+          .getActions()
+          .nodeSummary.setConnectedPeers(
+            await store.getActions().nodeSummary.getConnectedPeers()
+          );
+      } catch (error) {
+        require("electron-log").error(
+          `Error trying to get Connected Peers: ${error.message}`
+        );
+      }
+    },
+    5000,
+    []
+  );
 
   return (
     <StoreProvider store={store}>
@@ -71,6 +91,9 @@ const App: React.FC = () => {
           </Route>
           <Route path="/send">
             <SendGrinContainer />
+          </Route>
+          <Route path="/receive">
+            <ReceiveGrinContainer />
           </Route>
           <Route path="/create">
             <SignUpContainer />
@@ -84,8 +107,17 @@ const App: React.FC = () => {
           <Route path="/status">
             <StatusContainer />
           </Route>
-          <Route path="/logs">
-            <LogsContainer />
+          <Route path="/help">
+            <HelpContainer />
+          </Route>
+          <Route path="/nodeLogs">
+            <NodeLogsContainer />
+          </Route>
+          <Route path="/walletLogs">
+            <WalletLogsContainer />
+          </Route>
+          <Route path="/UILogs">
+            <UILogsContainer />
           </Route>
           <Route path="/">
             <InitializerContainer />

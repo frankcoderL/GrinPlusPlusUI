@@ -10,8 +10,6 @@ import {
   Intent,
   NumericInput,
   Slider,
-  Switch,
-  Text,
 } from "@blueprintjs/core";
 
 import React from "react";
@@ -38,6 +36,7 @@ type SettingsProps = {
   toggleConfirmationDialogCb: () => void;
   confirmReSyncBlockchainCb: () => void;
   restartNodeCb: () => void;
+  scanForOutputsCb: () => void;
   backupButtonCb: () => void;
 };
 
@@ -62,6 +61,7 @@ export const SettingsComponent = ({
   toggleConfirmationDialogCb,
   confirmReSyncBlockchainCb,
   restartNodeCb,
+  scanForOutputsCb,
   backupButtonCb,
 }: SettingsProps) => {
   const { t } = useTranslation();
@@ -69,35 +69,16 @@ export const SettingsComponent = ({
   return (
     <div>
       <div className={Classes.DIALOG_BODY}>
-        <InputGroup
-          data-testid="grinchck-address-input"
-          placeholder="GrinChck"
-          value={grinChckAddress}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setGrinChckAddressCb(e.target.value)
-          }
-        />
-        <Divider />
-        <br />
-        <Switch
-          disabled={floonet}
-          checked={useGrinJoin}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-            setGrinJoinUseCb(e.target.checked);
-          }}
-        >
-          <b>{t("grinjoin")}</b>
-        </Switch>
-        <InputGroup
-          data-testid="grinjoin-address-input"
-          disabled={!useGrinJoin}
-          placeholder={t("grinjoin_address")}
-          value={grinJoinAddress}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setGrinJoinAddressCb(e.target.value)
-          }
-        />
-        <br />
+        <FormGroup label="GrinChck API URL:" inline={false}>
+          <InputGroup
+            data-testid="grinchck-address-input"
+            placeholder="GrinChck"
+            value={grinChckAddress}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setGrinChckAddressCb(e.target.value)
+            }
+          />
+        </FormGroup>
         <Divider />
         <br />
         <FormGroup
@@ -123,11 +104,13 @@ export const SettingsComponent = ({
             onValueChange={(value) => setMaximumPeersCb(value)}
           />
         </FormGroup>
+        <Divider />
+        <br />
         <FormGroup label={t("confirmations")}>
           <Slider
             min={0}
-            max={30}
-            stepSize={1}
+            max={60}
+            stepSize={2}
             labelStepSize={10}
             data-testid="confirmations-slider"
             value={confirmations}
@@ -136,48 +119,45 @@ export const SettingsComponent = ({
           />
         </FormGroup>
         <Divider />
-        <FormGroup
-          label={t("node_data_location")}
-          labelFor="note-data-path"
-          disabled={true}
-        >
-          <InputGroup
-            id="note-data-path"
-            readOnly={true}
-            placeholder={nodeDataPath}
-          />
-        </FormGroup>
-        <FormGroup label={t("node")} labelFor="wallet-path" disabled={true}>
-          <InputGroup
-            id="wallet-path"
-            placeholder={nodeBinaryPath}
-            readOnly={true}
-          />
-        </FormGroup>
-        <Text>{t("node_actions")}</Text>
-        <ControlGroup>
-          <Button
-            text={t("restart")}
-            onClick={() => restartNodeCb()}
-            style={{ width: isLoggedIn ? "40%" : "50%" }}
-            intent={Intent.DANGER}
-          />
-          <Button
-            text={t("resync")}
-            style={{ width: isLoggedIn ? "40%" : "50%" }}
-            intent={Intent.WARNING}
-            onClick={() => toggleConfirmationDialogCb()}
-          />
-          {isLoggedIn ? (
+        <br />
+        <FormGroup label={t("node_actions")}>
+          <ControlGroup>
             <Button
-              icon="key"
-              style={{ width: "20%" }}
-              intent={Intent.NONE}
-              onClick={() => backupButtonCb()}
+              text={t("restart")}
+              onClick={() => restartNodeCb()}
+              style={{ width: "50%" }}
+              intent={Intent.SUCCESS}
             />
-          ) : null}
-        </ControlGroup>
+            <Button
+              text={t("resync")}
+              style={{ width: "50%" }}
+              intent={Intent.WARNING}
+              onClick={() => toggleConfirmationDialogCb()}
+            />
+          </ControlGroup>
+        </FormGroup>
+        {isLoggedIn ? (
+          <div>
+            <FormGroup label={t("wallet_actions")}>
+              <ControlGroup>
+                <Button
+                  text={t("scan_for_outputs")}
+                  style={{ width: "50%" }}
+                  intent={Intent.NONE}
+                  onClick={() => scanForOutputsCb()}
+                />
+                <Button
+                  text={t("export_seed")}
+                  style={{ width: "50%" }}
+                  intent={Intent.NONE}
+                  onClick={() => backupButtonCb()}
+                />
+              </ControlGroup>
+            </FormGroup>
+          </div>
+        ) : null}
       </div>
+      <br />
       <Callout>{t("restart_warning")}.</Callout>
       <Alert
         className="bp3-dark"

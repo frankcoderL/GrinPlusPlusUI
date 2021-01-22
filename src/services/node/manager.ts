@@ -1,5 +1,8 @@
 import { IWalletSettings } from "../../interfaces/IWalletSettings";
-import { retry } from "ts-retry";
+import { retryAsync } from "ts-retry";
+import { getTextFileContent } from "../utils";
+
+import { RPC } from "../foreign/rpc";
 
 export const getCommand = function(): string {
   const cmd = (() => {
@@ -10,6 +13,22 @@ export const getCommand = function(): string {
         return "GrinNode";
       case "linux":
         return "GrinNode";
+      default:
+        throw new Error("Unknown Platform");
+    }
+  })();
+  return cmd;
+};
+
+export const getTorCommand = function(): string {
+  const cmd = (() => {
+    switch (require("electron").remote.process.platform) {
+      case "win32":
+        return "tor.exe";
+      case "darwin":
+        return "tor";
+      case "linux":
+        return "tor";
       default:
         throw new Error("Unknown Platform");
     }
@@ -33,24 +52,35 @@ export const getRustNodeProcess = function(): string {
   return cmd;
 };
 
-const isProcessRunning = function(processName: string): boolean {
+const isProcessRunning = function(processName: string): Promise<boolean> {
   const cmd = (() => {
-    switch (require("electron").remote.process.platform) {
+    switch (require("os").platform()) {
       case "win32":
-        return `tasklist`;
+        return `wmic process where "name = '${processName}'" get commandline`;
       case "darwin":
-        return `ps -ax`;
+        return `ps -ax | grep ${processName}`;
       case "linux":
         return `ps -A`;
       default:
-        throw new Error("Unknown Platform");
+        return false;
     }
   })();
-  const results = require("child_process").execSync(cmd, {
-    windowsHide: true,
-    encoding: "utf-8",
+
+  return new Promise((resolve, reject) => {
+    require("child_process").exec(
+      cmd,
+      (err: Error, stdout: string, stderr: string) => {
+        if (err) reject(err);
+        if (require("electron").remote.process.platform === "win32") {
+          resolve(
+            stdout.toLowerCase().indexOf("CommandLine".toLowerCase()) > -1
+          );
+        } else {
+          resolve(stdout.toLowerCase().indexOf(processName.toLowerCase()) > -1);
+        }
+      }
+    );
   });
-  return results.toLowerCase().indexOf(processName.toLowerCase()) > -1;
 };
 
 const killProcess = function(processName: string): void {
@@ -74,51 +104,51 @@ const killProcess = function(processName: string): void {
 
 export const getNodeDataPath = function(floonet: boolean = false): string {
   const { remote } = require("electron");
+  const path = require("path");
   const net = !floonet ? "MAINNET" : "FLOONET";
-  return `${remote.app.getPath("home")}/.GrinPP/${net}`;
+  return path.normalize(path.join(remote.app.getPath("home"), ".GrinPP", net));
 };
 
 export const getConfigFilePath = function(floonet: boolean = false): string {
-  return `${getNodeDataPath(floonet)}/server_config.json`;
+  const path = require("path");
+  return path.normalize(
+    path.join(getNodeDataPath(floonet), "server_config.json")
+  );
 };
 
-export const updateSettings = function(
-  file: string,
-  property: "MIN_PEERS" | "MAX_PEERS" | "MIN_CONFIRMATIONS" | undefined,
+export const updateSettings = async function(
+  property: "min_peers" | "max_peers" | "min_confirmations",
   value: number
-): void {
-  if (!property) return;
-  const fs = require("fs");
-  const data = fs.readFileSync(file, "utf8");
-  let settings = JSON.parse(data);
-  if (["MIN_PEERS", "MAX_PEERS"].includes(property)) {
-    if (!settings["P2P"]) settings["P2P"] = {};
-    settings["P2P"][property] = value;
-  } else if (property === "MIN_CONFIRMATIONS") {
-    settings["WALLET"]["MIN_CONFIRMATIONS"] = value;
+): Promise<{} | null> {
+  switch (property) {
+    case "min_peers":
+      return await RPC.config({ min_peers: value });
+    case "max_peers":
+      return await RPC.config({ max_peers: value });
+    case "min_confirmations":
+      return await RPC.config({ min_confirmations: value });
   }
-  fs.writeFileSync(file, JSON.stringify(settings));
 };
 
 export const getAbsoluteNodePath = function(
   mode: "DEV" | "TEST" | "PROD",
   nodePath: string
 ): string {
+  const path = require("path");
   if (mode === "PROD") {
-    return require("path").join(
-      process.resourcesPath,
-      "./app.asar.unpacked/" + nodePath
+    return path.normalize(
+      path.join(process.resourcesPath, "./app.asar.unpacked/" + nodePath)
     );
   } else {
-    return require("path").join(
-      require("electron").remote.app.getAppPath(),
-      nodePath
+    return path.normalize(
+      path.join(require("electron").remote.app.getAppPath(), nodePath)
     );
   }
 };
 
 export const getCommandPath = function(nodePath: string): string {
-  return require("path").join(nodePath, getCommand());
+  const path = require("path");
+  return path.normalize(path.join(nodePath, getCommand()));
 };
 
 export const runNode = function(
@@ -129,6 +159,10 @@ export const runNode = function(
   const params = isFloonet ? ["--headless", "--floonet"] : ["--headless"];
   const absolutePath = getAbsoluteNodePath(mode, nodePath);
   const command = getCommandPath(absolutePath);
+
+  require("electron-log").info(
+    "Current working directory: " + require("process").cwd()
+  );
 
   require("electron-log").info(`Trying to run Backend: ${command}`);
   let node = require("child_process").spawn(command, params, {
@@ -155,23 +189,51 @@ export const isNodeRunning = async function(
 ): Promise<boolean> {
   const log = require("electron-log");
   const command = getCommand();
-  let isRunning: boolean | undefined = false;
+  let isRunning: boolean = false;
   try {
-    isRunning = await retry(
-      () => {
+    isRunning = await retryAsync(
+      async () => {
         log.info(`Checking if ${command} is running...`);
-        if (isProcessRunning(command)) {
+        const running = await isProcessRunning(command);
+        if (running) {
           log.info(`${command} is running`);
-          return true;
+        } else {
+          log.info(`${command} is NOT running`);
         }
-        throw new Error(`${command} not found...`);
+        return running;
       },
       { delay: 1000, maxTry: retries }
     );
   } catch (error) {
     log.error(`${command} is not running: ${error.message}`);
   }
-  return isRunning ? true : false;
+  return isRunning;
+};
+
+export const isTorRunning = async function(
+  retries: number = 1
+): Promise<boolean> {
+  const log = require("electron-log");
+  const command = getTorCommand();
+  let isRunning: boolean = false;
+  try {
+    isRunning = await retryAsync(
+      async () => {
+        log.info(`Checking if ${command} is running...`);
+        const running = await isProcessRunning(command);
+        if (running) {
+          log.info(`${command} is running`);
+        } else {
+          log.info(`${command} is NOT running`);
+        }
+        return running;
+      },
+      { delay: 1000, maxTry: retries }
+    );
+  } catch (error) {
+    log.error(`${command} is not running: ${error.message}`);
+  }
+  return isRunning;
 };
 
 export const stopNode = function(): void {
@@ -184,23 +246,24 @@ export const stopRustNode = function(): void {
   try {
     killProcess(getRustNodeProcess());
   } catch (e) {}
-}
+};
 
-export const getDefaultSettings = function(
-  file: string = "defaults.json"
-): IWalletSettings {
-  const filePath = require("path").join(
-    require("electron").remote.app.getAppPath(),
-    file
+export const getDefaultSettings = async function(
+  file: string = "defaults.json",
+): Promise<IWalletSettings> {
+  const fs = require("fs");
+  const path = require("path");
+
+  const settingsFilePath = path.normalize(
+    path.join(path.normalize(require("electron").remote.app.getAppPath()), file)
   );
-  const defaults = JSON.parse(require("fs").readFileSync(filePath, "utf8"));
 
-  let node: any = {};
-  if (require("fs").existsSync(getConfigFilePath())) {
-    const fs = require("fs");
-    const data = fs.readFileSync(getConfigFilePath(), "utf8");
-    node = JSON.parse(data);
+  if (!fs.existsSync(settingsFilePath)) {
+    throw new Error(`Can't find settings file: ${settingsFilePath}`);
   }
+
+  const settingsFileContent = getTextFileContent(settingsFilePath);
+  const defaults = JSON.parse(settingsFileContent);
 
   return {
     ip: defaults.ip,
@@ -208,18 +271,9 @@ export const getDefaultSettings = function(
     mode: defaults.mode,
     binaryPath: defaults.binaryPath,
     floonet: defaults.floonet,
-    minimumPeers:
-      node["P2P"] && node["P2P"]["MIN_PEERS"]
-        ? node["P2P"]["MIN_PEERS"]
-        : defaults.minimumPeers,
-    maximumPeers:
-      node["P2P"] && node["P2P"]["MAX_PEERS"]
-        ? node["P2P"]["MAX_PEERS"]
-        : defaults.maximumPeers,
-    minimumConfirmations:
-      node["WALLET"] && node["WALLET"]["MIN_CONFIRMATIONS"]
-        ? node["WALLET"]["MIN_CONFIRMATIONS"]
-        : defaults.minimumConfirmations,
+    minimumPeers: 10, // default value
+    maximumPeers: 35, // default value
+    minimumConfirmations: 10, // default value
     ports: {
       node: defaults.ports.node,
       foreignRPC: defaults.ports.foreignRPC,
@@ -228,6 +282,29 @@ export const getDefaultSettings = function(
     },
     grinJoinAddress: defaults.grinJoinAddress,
     grinChckAddress: defaults.grinChckAddress,
+  };
+};
+
+export const getNodeSettings = async function(): Promise<{
+  minimumPeers: number;
+  maximumPeers: number;
+  minimumConfirmations: number;
+}> {
+  let minimumPeers = 10;
+  let maximumPeers = 35;
+  let minimumConfirmations = 10;
+
+  const node = await RPC.config();
+  if (node !== null) {
+    minimumPeers = node.min_peers;
+    maximumPeers = node.max_peers;
+    minimumConfirmations = node.min_confirmations;
+  }
+
+  return {
+    minimumPeers: minimumPeers,
+    maximumPeers: maximumPeers,
+    minimumConfirmations: minimumConfirmations,
   };
 };
 

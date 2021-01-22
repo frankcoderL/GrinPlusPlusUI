@@ -1,13 +1,9 @@
-import {
-  Left,
-  SendGrinTopRow,
-  SendGrinsContent,
-} from "../../components/styled";
+import { Flex, SendGrinsContent } from "../../components/styled";
 import React, { Suspense, useEffect } from "react";
 import { useHistory } from "react-router-dom";
 import { useStoreActions, useStoreState } from "../../hooks";
 
-import { Dialog } from "@blueprintjs/core";
+import { Button, Classes, Dialog } from "@blueprintjs/core";
 
 import { LoadingComponent } from "../../components/extras/Loading";
 import { PasswordPromptComponent } from "../../components/wallet/open/PasswordPrompt";
@@ -26,12 +22,6 @@ const TransactionAmountContainer = React.lazy(() =>
   }))
 );
 
-const SaveTransactionFileContainer = React.lazy(() =>
-  import("./SaveTransactionFile").then((module) => ({
-    default: module.SaveTransactionFileContainer,
-  }))
-);
-
 const TransactionMessageContainer = React.lazy(() =>
   import("./TransactionMessage").then((module) => ({
     default: module.TransactionMessageContainer,
@@ -47,6 +37,12 @@ const TransactionAddressContainer = React.lazy(() =>
 const CoinControlContainer = React.lazy(() =>
   import("./CoinControl").then((module) => ({
     default: module.CoinControlContainer,
+  }))
+);
+
+const SendUsingAddressContainer = React.lazy(() =>
+  import("./SendUsingAddress").then((module) => ({
+    default: module.SendUsingAddressContainer,
   }))
 );
 
@@ -86,19 +82,15 @@ export const SendContainer = () => {
   return (
     <Suspense fallback={renderLoader()}>
       <SendGrinsContent>
-        <div style={{ float: "right" }}>
-          <SpendableContainer />
-        </div>
-        <SendGrinTopRow>
-          <Left>
-            <TransactionAmountContainer />
-          </Left>
-          <div style={{ textAlign: "right", paddingRight: "5px" }}>
-            <SaveTransactionFileContainer />
+        <SpendableContainer />
+        <Flex>
+          <TransactionAmountContainer />
+          <div style={{ marginLeft: "25px" }}>
+            <SendUsingAddressContainer />
           </div>
-        </SendGrinTopRow>
-        <TransactionMessageContainer />
+        </Flex>
         <TransactionAddressContainer />
+        <TransactionMessageContainer />
         <CoinControlContainer />
       </SendGrinsContent>
       {usernamePrompt ? (
@@ -119,15 +111,33 @@ export const SendContainer = () => {
       ) : null}
       <Dialog
         title="Slatepack"
-        className="bp3-dark"
-        isOpen={returnedSlatepack.length !== 0}
-        onOpened={() => navigator.clipboard.writeText(returnedSlatepack)}
+        icon="label"
         onClose={() => {
           setReturnedSlatepack("");
           history.push("/wallet");
         }}
+        className="bp3-dark"
+        isOpen={returnedSlatepack.length !== 0}
       >
-        <SlatepackComponent slatepack={returnedSlatepack} />
+        <div className={Classes.DIALOG_BODY}>
+          <p>{t("share_to_initiate_transaction")}</p>
+          <br />
+          <div>
+            <SlatepackComponent slatepack={returnedSlatepack} />
+          </div>
+        </div>
+        <div className={Classes.DIALOG_FOOTER}>
+          <div className={Classes.DIALOG_FOOTER_ACTIONS}>
+            <Button
+              onClick={() => {
+                setReturnedSlatepack("");
+                history.push("/wallet");
+              }}
+            >
+              {t("close")}
+            </Button>
+          </div>
+        </div>
       </Dialog>
     </Suspense>
   );

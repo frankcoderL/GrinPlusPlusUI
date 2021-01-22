@@ -4,13 +4,14 @@ import {
   Intent,
   Overlay,
   Spinner,
-  Text
+  Text,
 } from "@blueprintjs/core";
 
 import { InputPasswordComponent } from "../../custom/InputPassword";
 import React from "react";
 import classNames from "classnames";
 import { useTranslation } from "react-i18next";
+import { Flex, HorizontallyCenter } from "../../styled";
 
 type PasswordPromptProps = {
   username: string;
@@ -18,6 +19,7 @@ type PasswordPromptProps = {
   passwordCb: (password: string) => void;
   onCloseCb: () => void;
   passwordButtonCb?: () => Promise<void>;
+  deleteWalletButtonCb?: () => Promise<void>;
   waitingResponse: boolean;
   connected: boolean;
   buttonText: string;
@@ -30,10 +32,11 @@ export const PasswordPromptComponent = ({
   passwordCb,
   onCloseCb,
   passwordButtonCb,
+  deleteWalletButtonCb,
   waitingResponse,
   connected,
   buttonText,
-  isOpen
+  isOpen,
 }: PasswordPromptProps) => {
   const { t } = useTranslation();
   const classes = classNames("bp3-dark", Classes.CARD, Classes.ELEVATION_4);
@@ -54,7 +57,7 @@ export const PasswordPromptComponent = ({
           left: "50%",
           position: "fixed",
           transform: "translate(-50%, -50%)",
-          backgroundColor: "#060707"
+          backgroundColor: "#060707",
         }}
       >
         <div style={{ marginBottom: "8px", fontSize: "14px" }}>
@@ -71,22 +74,24 @@ export const PasswordPromptComponent = ({
             waitingResponse={waitingResponse}
           />
         </div>
-        <div style={{ textAlign: "center" }}>
-          <Button
-            data-testid="open-wallet-button"
-            intent={Intent.PRIMARY}
-            style={{ color: "black", marginTop: "10px" }}
-            text={
-              waitingResponse ? (
-                <Spinner size={Spinner.SIZE_SMALL} />
-              ) : (
-                buttonText
-              )
-            }
-            onClick={passwordButtonCb}
-            disabled={password?.length === 0 || waitingResponse || !connected}
-          />
-        </div>
+        <HorizontallyCenter>
+          <Flex>
+            <Button
+              data-testid="open-wallet-button"
+              intent={Intent.PRIMARY}
+              style={{ color: "black", marginTop: "10px" }}
+              text={
+                waitingResponse ? (
+                  <Spinner size={Spinner.SIZE_SMALL} />
+                ) : (
+                  buttonText
+                )
+              }
+              onClick={passwordButtonCb}
+              disabled={password?.length === 0 || waitingResponse || !connected}
+            />
+          </Flex>
+        </HorizontallyCenter>
       </div>
     </Overlay>
   );

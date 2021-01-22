@@ -6,37 +6,40 @@ import { TransactionAmountComponent } from "../../components/transaction/send/Tr
 import { countDecimalPlaces } from "@blueprintjs/core/lib/esm/common/utils";
 
 export const TransactionAmountContainer = () => {
-  const { spendable } = useStoreState(state => state.walletSummary);
+  const { spendable } = useStoreState((state) => state.walletSummary);
   const { amount, fee, message, strategy, inputs } = useStoreState(
-    state => state.sendCoinsModel
+    (state) => state.sendCoinsModel
   );
-  const { token } = useStoreState(state => state.session);
-  const { estimateFee, setAmount } = useStoreActions(
-    actions => actions.sendCoinsModel
+  const { token } = useStoreState((state) => state.session);
+  const { estimateFee, setAmount, setEstimatedFee } = useStoreActions(
+    (actions) => actions.sendCoinsModel
   );
 
   const onAmountChange = useCallback(
     async (amount: string) => {
       if (amount === undefined || amount.slice(-1) === ".") return;
+      setAmount(amount);
       const _amount = Number(amount);
       if (countDecimalPlaces(_amount) > 9) return;
-      if (_amount < 0) return;
-      setAmount(amount);
+      if (_amount <= 0) {
+        setEstimatedFee(0.0);
+        return;
+      }
       await estimateFee({
         amount: _amount,
         strategy: strategy,
         message: message,
         token: token,
-        inputs: inputs
+        inputs: inputs,
       }).catch((error: { message: string }) => {
         Toaster.create({ position: Position.BOTTOM }).show({
           message: error.message,
           intent: Intent.WARNING,
-          icon: "warning-sign"
+          icon: "warning-sign",
         });
       });
     },
-    [strategy, message, token, inputs, estimateFee, setAmount]
+    [strategy, message, token, inputs, estimateFee, setAmount, setEstimatedFee]
   );
 
   return (

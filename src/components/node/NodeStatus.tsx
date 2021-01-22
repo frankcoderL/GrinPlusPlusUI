@@ -10,12 +10,12 @@ export type NodeStatusProps = {
 export const NodeStatusComponent = ({
   headers,
   blocks,
-  network
+  network,
 }: NodeStatusProps) => {
   const { t } = useTranslation();
 
   return (
-    <table className="transactions" style={{ width: "500px" }}>
+    <table className="transactions">
       <tbody>
         <tr>
           <th>

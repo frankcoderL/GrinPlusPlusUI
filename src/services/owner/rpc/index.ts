@@ -66,32 +66,9 @@ export class OwnerRPCApi extends BaseApi {
     });
   }
 
-  public async sendCoinsViaFile(
-    token: string,
-    amount: number,
-    strategy: string,
-    inputs: string[],
-    message: string,
-    file: string
-  ): Promise<string | {}> {
-    return await this.makeRPCRequest(this.getRequestURL("send"), "send", {
-      session_token: token,
-      amount: amount * Math.pow(10, 9),
-      fee_base: 1000000,
-      selection_strategy: {
-        strategy: strategy,
-        inputs: strategy === "SMALLEST" ? [] : inputs,
-      },
-      message: message,
-      file: file,
-    }).then((response) =>
-      response.error ? response.error.message : response.result.slate
-    );
-  }
-
   public async sendCoins(
     token: string,
-    amount: number,
+    amount: number | undefined,
     message: string,
     strategy: string,
     inputs: string[],
@@ -114,22 +91,23 @@ export class OwnerRPCApi extends BaseApi {
     }
     let params = {
       session_token: token,
-      amount: amount * Math.pow(10, 9),
-      fee_base: 1000000,
+      amount: amount ? amount * Math.pow(10, 9) : undefined,
+      fee_base: 500000,
       selection_strategy: {
         strategy: strategy,
         inputs: strategy === "SMALLEST" ? [] : inputs,
       },
-      address: address,
-      message: message,
+      address: address ? address : undefined,
+      message: message ? message : undefined,
       post_tx: postTx,
     };
-    if (message === "") {
-      delete params["message"];
-    }
-    if (address === "") {
+    if (address === "" || address === undefined) {
       delete params["address"];
     }
+    if (message === "" || message === undefined) {
+      delete params["message"];
+    }
+
     require("electron-log").info(`${address}`);
     require("electron-log").info(params);
 
@@ -270,6 +248,23 @@ export class OwnerRPCApi extends BaseApi {
     });
   }
 
+  public async deleteWallet(
+    username: string,
+    password: string
+  ): Promise<boolean> {
+    return await this.makeRPCRequest(
+      this.getRequestURL("delete_wallet"),
+      "delete_wallet",
+      {
+        username: username,
+        password: password,
+      }
+    ).then((response) => {
+      if (response.error) throw new Error(response.error.message);
+      return response.result.status === "SUCCESS";
+    });
+  }
+
   public async getWalletBalance(
     token: string
   ): Promise<{
@@ -319,6 +314,7 @@ export class OwnerRPCApi extends BaseApi {
           fee: transaction.fee,
           slateId: transaction.slate_id,
           slateMessage: transaction.slate_message,
+          slatepackMessage: transaction.armored_slatepack,
           kernels: transaction.kernels?.map(
             (kernel: { commitment: string }) => kernel.commitment
           ),
@@ -349,12 +345,13 @@ export class OwnerRPCApi extends BaseApi {
 
   public async estimateFee(
     token: string,
-    amount: number,
+    amount: number | undefined,
     strategy: string = "SMALLEST",
     inputs: string[] = [],
     message: string = ""
   ): Promise<{
     fee: number;
+    amount: number;
     inputs: {
       amount: number;
       block_height: number;
@@ -369,8 +366,8 @@ export class OwnerRPCApi extends BaseApi {
       "estimate_fee",
       {
         session_token: token,
-        amount: amount * Math.pow(10, 9),
-        fee_base: 1000000,
+        amount: amount ? amount * Math.pow(10, 9) : undefined,
+        fee_base: 500000,
         selection_strategy: {
           strategy: strategy,
           inputs: strategy === "SMALLEST" ? [] : inputs,
@@ -406,6 +403,54 @@ export class OwnerRPCApi extends BaseApi {
     ).then((response) => {
       if (response.error) throw new Error(response.error.message);
       return response.result.status;
+    });
+  }
+
+  public async getAccounts(): Promise<string[]> {
+    return await this.makeRPCRequest(
+      `${this.getRequestURL("list_wallets")}`,
+      "list_wallets",
+      {}
+    )
+      .then((response) => {
+        if (response.error) throw new Error(response.error.message);
+        return response.result.wallets;
+      })
+      .catch((error) => {
+        throw new Error(error);
+      });
+  }
+
+  public async getOutputs(
+    token: string
+  ): Promise<
+    {
+      amount: number;
+      block_height: number;
+      commitment: string;
+      keychain_path: string;
+      status: string;
+      transaction_id: number;
+    }[]
+  > {
+    return await this.makeRPCRequest(
+      `${this.getRequestURL("list_outputs")}`,
+      "list_outputs",
+      { session_token: token }
+    ).then((response) => {
+      if (response.error) throw new Error(response.error.message);
+      return response.result.outputs;
+    });
+  }
+
+  public async scanOutputs(token: string): Promise<string> {
+    return await this.makeRPCRequest(
+      `${this.getRequestURL("scan_for_outputs")}`,
+      "scan_for_outputs",
+      { session_token: token }
+    ).then((response) => {
+      if (response.error) throw new Error(response.error.message);
+      return response.result;
     });
   }
 }

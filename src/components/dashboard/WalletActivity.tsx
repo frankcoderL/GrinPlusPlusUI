@@ -2,7 +2,6 @@ import { Tab, Tabs } from "@blueprintjs/core";
 
 import { ITransaction } from "../../interfaces/ITransaction";
 import React from "react";
-import { Title } from "../styled";
 import { TransactionsTableComponent } from "../shared/TransactionsTable";
 import { useTranslation } from "react-i18next";
 
@@ -16,10 +15,12 @@ type WalletActivityProps = {
   transactionOpened: number;
   openTransactionCb: (transactionId: number) => void;
   onCancelTransactionButtonClickedCb: (transactionId: number) => void;
+  onFinalizeTransactionButtonClickedCb: (transactionId: number) => void;
   onRepostTransactionButtonClickedCb: (
     transactionId: number,
     method: string
   ) => void;
+  onViewSlatepackMessageButtonClickedCb: (transactionId: number) => void;
   method: string;
   lastConfirmedHeight: number;
   confirmations: number;
@@ -35,7 +36,9 @@ export const WalletActivityComponent = ({
   transactionOpened,
   openTransactionCb,
   onCancelTransactionButtonClickedCb,
+  onFinalizeTransactionButtonClickedCb,
   onRepostTransactionButtonClickedCb,
+  onViewSlatepackMessageButtonClickedCb,
   method,
   lastConfirmedHeight,
   confirmations,
@@ -43,9 +46,7 @@ export const WalletActivityComponent = ({
   const { t } = useTranslation();
 
   return (
-    <div>
-      <Title>{t("transactions")}</Title>
-      <br />
+    <div style={{ marginTop: "10px" }}>
       <Tabs
         animate={false}
         id="WalletTabs"
@@ -56,7 +57,7 @@ export const WalletActivityComponent = ({
           id="all"
           key="all"
           title={t("all")}
-          style={{ fontSize: "16px" }}
+          style={{ fontSize: "17px" }}
           panel={
             <TransactionsTableComponent
               transactions={all}
@@ -65,53 +66,14 @@ export const WalletActivityComponent = ({
               onCancelTransactionButtonClickedCb={
                 onCancelTransactionButtonClickedCb
               }
-              onRepostTransactionButtonClickedCb={
-                onRepostTransactionButtonClickedCb
-              }
-              method={method}
-              lastConfirmedHeight={lastConfirmedHeight}
-              confirmations={confirmations}
-            />
-          }
-        />
-        <Tabs.Expander />
-        <Tab
-          id="received"
-          key="received"
-          title={t("received")}
-          style={{ fontSize: "16px" }}
-          panel={
-            <TransactionsTableComponent
-              transactions={received}
-              transactionOpened={transactionOpened}
-              openTransactionCb={openTransactionCb}
-              onCancelTransactionButtonClickedCb={
-                onCancelTransactionButtonClickedCb
+              onFinalizeTransactionButtonClickedCb={
+                onFinalizeTransactionButtonClickedCb
               }
               onRepostTransactionButtonClickedCb={
                 onRepostTransactionButtonClickedCb
               }
-              method={method}
-              lastConfirmedHeight={lastConfirmedHeight}
-              confirmations={confirmations}
-            />
-          }
-        />
-        <Tab
-          id="sent"
-          key="sent"
-          title={t("sent")}
-          style={{ fontSize: "16px" }}
-          panel={
-            <TransactionsTableComponent
-              transactions={sent}
-              transactionOpened={transactionOpened}
-              openTransactionCb={openTransactionCb}
-              onCancelTransactionButtonClickedCb={
-                onCancelTransactionButtonClickedCb
-              }
-              onRepostTransactionButtonClickedCb={
-                onRepostTransactionButtonClickedCb
+              onViewSlatepackMessageButtonClickedCb={
+                onViewSlatepackMessageButtonClickedCb
               }
               method={method}
               lastConfirmedHeight={lastConfirmedHeight}
@@ -123,7 +85,7 @@ export const WalletActivityComponent = ({
           id="in_progress"
           key="in_progress"
           title={t("in_progress")}
-          style={{ fontSize: "16px" }}
+          style={{ fontSize: "17px" }}
           panel={
             <TransactionsTableComponent
               transactions={notFinalized}
@@ -132,8 +94,70 @@ export const WalletActivityComponent = ({
               onCancelTransactionButtonClickedCb={
                 onCancelTransactionButtonClickedCb
               }
+              onFinalizeTransactionButtonClickedCb={
+                onFinalizeTransactionButtonClickedCb
+              }
               onRepostTransactionButtonClickedCb={
                 onRepostTransactionButtonClickedCb
+              }
+              onViewSlatepackMessageButtonClickedCb={
+                onViewSlatepackMessageButtonClickedCb
+              }
+              method={method}
+              lastConfirmedHeight={lastConfirmedHeight}
+              confirmations={confirmations}
+            />
+          }
+        />
+        <Tab
+          id="received"
+          key="received"
+          title={t("received")}
+          style={{ fontSize: "17px" }}
+          panel={
+            <TransactionsTableComponent
+              transactions={received}
+              transactionOpened={transactionOpened}
+              openTransactionCb={openTransactionCb}
+              onCancelTransactionButtonClickedCb={
+                onCancelTransactionButtonClickedCb
+              }
+              onFinalizeTransactionButtonClickedCb={
+                onFinalizeTransactionButtonClickedCb
+              }
+              onRepostTransactionButtonClickedCb={
+                onRepostTransactionButtonClickedCb
+              }
+              onViewSlatepackMessageButtonClickedCb={
+                onViewSlatepackMessageButtonClickedCb
+              }
+              method={method}
+              lastConfirmedHeight={lastConfirmedHeight}
+              confirmations={confirmations}
+            />
+          }
+        />
+        <Tab
+          id="sent"
+          key="sent"
+          title={t("sent")}
+          style={{ fontSize: "17px" }}
+          panel={
+            <TransactionsTableComponent
+              transactions={sent}
+              transactionOpened={transactionOpened}
+              openTransactionCb={openTransactionCb}
+              onCancelTransactionButtonClickedCb={
+                onCancelTransactionButtonClickedCb
+              }
+              onFinalizeTransactionButtonClickedCb={
+                onFinalizeTransactionButtonClickedCb
+              }
+              onRepostTransactionButtonClickedCb={
+                onRepostTransactionButtonClickedCb
+              }
+              onViewSlatepackMessageButtonClickedCb={
+                onViewSlatepackMessageButtonClickedCb
               }
               method={method}
               lastConfirmedHeight={lastConfirmedHeight}
@@ -145,7 +169,7 @@ export const WalletActivityComponent = ({
           id="cancelled"
           key="cancelled"
           title={t("canceled")}
-          style={{ fontSize: "16px" }}
+          style={{ fontSize: "17px" }}
           panel={
             <TransactionsTableComponent
               transactions={canceled}
@@ -154,8 +178,14 @@ export const WalletActivityComponent = ({
               onCancelTransactionButtonClickedCb={
                 onCancelTransactionButtonClickedCb
               }
+              onFinalizeTransactionButtonClickedCb={
+                onFinalizeTransactionButtonClickedCb
+              }
               onRepostTransactionButtonClickedCb={
                 onRepostTransactionButtonClickedCb
+              }
+              onViewSlatepackMessageButtonClickedCb={
+                onViewSlatepackMessageButtonClickedCb
               }
               method={method}
               lastConfirmedHeight={lastConfirmedHeight}
@@ -167,7 +197,7 @@ export const WalletActivityComponent = ({
           id="coinbase"
           key="coinbase"
           title={t("coinbase")}
-          style={{ fontSize: "16px" }}
+          style={{ fontSize: "17px" }}
           panel={
             <TransactionsTableComponent
               transactions={coinbase}
@@ -176,8 +206,14 @@ export const WalletActivityComponent = ({
               onCancelTransactionButtonClickedCb={
                 onCancelTransactionButtonClickedCb
               }
+              onFinalizeTransactionButtonClickedCb={
+                onFinalizeTransactionButtonClickedCb
+              }
               onRepostTransactionButtonClickedCb={
                 onRepostTransactionButtonClickedCb
+              }
+              onViewSlatepackMessageButtonClickedCb={
+                onViewSlatepackMessageButtonClickedCb
               }
               method={method}
               lastConfirmedHeight={lastConfirmedHeight}

@@ -32,10 +32,16 @@ export const SendUsingAddressContainer = () => {
     setPassword: setPasswordPrompt,
     setCallback: setCallbackPrompt,
   } = useStoreActions((state) => state.passwordPrompt);
-  const { sendUsingListener, setWaitingResponse } = useStoreActions(
+  const { sendGrins, setWaitingResponse } = useStoreActions(
     (actions) => actions.sendCoinsModel
   );
   const { updateLogs } = useStoreActions((actions) => actions.wallet);
+
+  const { spendable } = useStoreState((state) => state.walletSummary);
+
+  const { waitingResponse, fee } = useStoreState(
+    (state) => state.sendCoinsModel
+  );
 
   const onSendButtonClicked = useCallback(async () => {
     if (amount === undefined || amount.slice(-1) === ".") return;
@@ -47,9 +53,12 @@ export const SendUsingAddressContainer = () => {
     setPasswordPrompt(undefined); // to clean prompt
     setWaitingResponse(true);
 
+    const _amount = Number(amount);
+    const sendingAmount = _amount + fee === spendable ? undefined : _amount;
+
     try {
-      const sent = await sendUsingListener({
-        amount: Number(amount),
+      const sent = await sendGrins({
+        amount: sendingAmount,
         message: message,
         address: address,
         method: useGrinJoin ? "JOIN" : "FLUFF",
@@ -89,7 +98,7 @@ export const SendUsingAddressContainer = () => {
       });
     }
   }, [
-    sendUsingListener,
+    sendGrins,
     amount,
     message,
     address,
@@ -104,12 +113,10 @@ export const SendUsingAddressContainer = () => {
     updateLogs,
     setUsernamePrompt,
     setPasswordPrompt,
+    spendable,
+    fee,
   ]);
 
-  const { spendable } = useStoreState((state) => state.walletSummary);
-  const { waitingResponse, isAddressValid, fee } = useStoreState(
-    (state) => state.sendCoinsModel
-  );
   const { username } = useStoreState((state) => state.session);
 
   const classes = classNames("bp3-dark", Classes.CARD, Classes.ELEVATION_4);
@@ -120,7 +127,6 @@ export const SendUsingAddressContainer = () => {
         spendable={spendable}
         amount={amount ? Number(amount) : 0}
         inputsSelected={inputs.length !== 0}
-        isAddressValid={isAddressValid}
         onSendButtonClickedCb={() => {
           setUsernamePrompt(username);
           setCallbackPrompt(onSendButtonClicked);

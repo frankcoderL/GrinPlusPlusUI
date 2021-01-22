@@ -1,7 +1,6 @@
-import { Icon, Text } from "@blueprintjs/core";
+import { Button, Icon, Intent, Text } from "@blueprintjs/core";
 import {
   cleanTxType,
-  cutAddress,
   getDateAsString,
   getTxIcon,
   getTxIntent,
@@ -11,16 +10,19 @@ import { ITransaction } from "../../interfaces/ITransaction";
 import React from "react";
 import { TansactionDetailsComponent } from "../transaction/Details";
 import { useTranslation } from "react-i18next";
+import { HorizontallyCenter } from "../styled";
 
 type TransactionsTableProps = {
   transactions: ITransaction[];
   transactionOpened: number;
   openTransactionCb: (transactionId: number) => void;
   onCancelTransactionButtonClickedCb: (transactionId: number) => void;
+  onFinalizeTransactionButtonClickedCb: (transactionId: number) => void;
   onRepostTransactionButtonClickedCb: (
     transactionId: number,
     method: string
   ) => void;
+  onViewSlatepackMessageButtonClickedCb: (transactionId: number) => void;
   method: string;
   lastConfirmedHeight: number;
   confirmations: number;
@@ -31,7 +33,9 @@ export const TransactionsTableComponent = ({
   transactionOpened,
   openTransactionCb,
   onCancelTransactionButtonClickedCb,
+  onFinalizeTransactionButtonClickedCb,
   onRepostTransactionButtonClickedCb,
+  onViewSlatepackMessageButtonClickedCb,
   method,
   lastConfirmedHeight,
   confirmations,
@@ -46,7 +50,7 @@ export const TransactionsTableComponent = ({
   ): string => {
     if (["sent", "received"].includes(status)) {
       if (txHeight + (confirms - 1) > lastHeight) {
-        return `${t(status)} (${lastHeight - txHeight}/${confirms} ${t(
+        return `${t(status)} (${lastHeight - txHeight + 1}/${confirms} ${t(
           "confirmations"
         )})`;
       }
@@ -70,25 +74,61 @@ export const TransactionsTableComponent = ({
       let mType = cleanTxType(transaction.type);
 
       table.push(
-        <tr
-          key={`i-${transaction.Id}`}
-          onClick={() => openTransactionCb(transaction.Id)}
-        >
-          <td style={{ width: "5%", paddingLeft: "10px" }}>
-            <Icon icon={getTxIcon(mType)} intent={getTxIntent(mType)} />
+        <tr key={`i-${transaction.Id}`} style={{ height: "30px" }}>
+          <td
+            style={{ width: "5%", paddingLeft: "10px" }}
+            onClick={() => openTransactionCb(transaction.Id)}
+          >
+            <HorizontallyCenter>
+              <Icon icon={getTxIcon(mType)} intent={getTxIntent(mType)} />
+            </HorizontallyCenter>
           </td>
-          <td style={{ width: "10%", paddingLeft: "10px" }}>
+          <td
+            style={{ width: "12%", paddingLeft: "10px" }}
+            onClick={() => openTransactionCb(transaction.Id)}
+          >
             {Math.abs(
               transaction.amountCredited - transaction.amountDebited
             ).toFixed(9)}
           </td>
-          <td style={{ width: "40%", paddingLeft: "10px" }}>
-            {transaction.address === undefined
-              ? ""
-              : cutAddress(transaction.address)}
+          <td
+            style={{ width: "50%", paddingLeft: "10px" }}
+            onClick={() => openTransactionCb(transaction.Id)}
+          >
+            {transaction.address === undefined ? "" : transaction.address}
           </td>
-          <td style={{ width: "25%", paddingLeft: "10px" }}>
+          <td
+            style={{ width: "15%", paddingLeft: "10px" }}
+            onClick={() => openTransactionCb(transaction.Id)}
+          >
             {date === undefined ? "" : date}
+          </td>
+
+          <td style={{ width: "18%", paddingLeft: "10px" }}>
+            {mType === "sending_not_finalized" ? (
+              <Button
+                style={{ margin: "0px", padding: "1px", height: "10px" }}
+                minimal={true}
+                small={true}
+                intent={Intent.PRIMARY}
+                icon="tick"
+                onClick={(event: React.MouseEvent<HTMLElement>) => {
+                  event.preventDefault();
+                  onFinalizeTransactionButtonClickedCb(transaction.Id);
+                }}
+              >
+                {t("finalize")}
+              </Button>
+            ) : (
+              <Text>
+                {getStatus(
+                  mType,
+                  transaction.confirmedHeight,
+                  lastConfirmedHeight,
+                  confirmations
+                )}
+              </Text>
+            )}
           </td>
         </tr>
       );
@@ -142,6 +182,9 @@ export const TransactionsTableComponent = ({
                 onRepostTransactionButtonClickedCb={
                   onRepostTransactionButtonClickedCb
                 }
+                onViewSlatepackMessageButtonClickedCb={
+                  onViewSlatepackMessageButtonClickedCb
+                }
               />
             ) : null}
           </td>
@@ -152,9 +195,18 @@ export const TransactionsTableComponent = ({
   };
 
   return (
-    <div style={{ height: "calc(100vh - 235px)", overflowY: "auto" }}>
+    <div
+      style={{
+        height: "calc(100vh - 380px)",
+        overflowY: "auto",
+      }}
+    >
       {transactions.length === 0 ? (
-        <Text>{t("no_transactions")}.</Text>
+        <HorizontallyCenter>
+          <p style={{ color: "#a3a3a3", fontSize: "15px", marginTop: "50px" }}>
+            {t("no_transactions")}.
+          </p>
+        </HorizontallyCenter>
       ) : (
         <table className="transactions">
           <tbody>
@@ -163,6 +215,7 @@ export const TransactionsTableComponent = ({
               <th style={{ paddingLeft: "10px" }}>{t("amount")} ツ</th>
               <th style={{ paddingLeft: "10px" }}>{t("address")}</th>
               <th style={{ paddingLeft: "10px" }}>{t("date")}</th>
+              <th style={{ paddingLeft: "10px" }}></th>
             </tr>
             {listTransactions(transactions)}
           </tbody>

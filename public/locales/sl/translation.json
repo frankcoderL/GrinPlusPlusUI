@@ -18,6 +18,7 @@
   "confirm_password_helper": "Prepričajte se, da se gesli ujemata",
   "confirmations": "Potrditve",
   "connected_peers": "Povezani Vrstniki",
+  "console": "Console",
   "continue": "Nadaljuj",
   "copied": "Kopirano",
   "create": "Ustvari",
@@ -63,8 +64,8 @@
   "password": "Geslo",
   "password_for": "Geslo za",
   "password_helper": {
-     "1": "Geslo mora biti vsaj",
-     "2": "znakov dolgo"
+    "1": "Geslo mora biti vsaj",
+    "2": "znakov dolgo"
   },
   "process": "Postopek",
   "receive": "Prejmi",
@@ -112,5 +113,25 @@
   "not_online": "Denarnica ni dosegljiva ⛔️",
   "outputs": "Izhodi",
   "kernels": "Kernels",
-  "slatepack": "Slatepack"
+  "slatepack": "Slatepack",
+  "node_logs": "Node Logs",
+  "rendeder_logs": "Renderer Logs",
+  "help": "Help",
+  "processes": "Processes",
+  "send_max": "Send Max",
+  "view_slatepack": "View Slatepack Message",
+  "export_seed": "Export Seed",
+  "wallet_actions": "Wallet Actions",
+  "restore_wallet_warning": "Restore can not start until the Node has been fully synced.",
+  "delete_wallet": "Delete Wallet",
+  "wallet_not_reachable": "Wallet is not Reachable 😫",
+  "wallet_reachable": "Wallet is Reachable 😀",
+  "scan_for_outputs": "Scan for Outputs",
+  "share_to_initiate_transaction": "Share this Slatepack Message with the Receiver to initiate the Transaction.",
+  "share_to_finalize_transaction": "Share this Slatepack Message with the Sender to finalize the Transaction.",
+  "wallet_logs": "Wallet Logs",
+  "ui_logs": "UI Logs",
+  "receive_grins": "Receive Grins",
+  "response": "Response",
+  "copy_to_clipboard": "Copy to Clipboard"
 }

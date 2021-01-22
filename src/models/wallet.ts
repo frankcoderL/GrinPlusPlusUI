@@ -6,19 +6,42 @@ import { StoreModel } from ".";
 export interface WalletModel {
   isNodeInstalled: boolean;
   isNodeRunning: boolean;
+  isTorRunning: boolean;
   isWalletInitialized: boolean;
   message: string;
   logs: string;
   initializingError: boolean;
+  action: "backup" | "delete" | undefined;
+  setAction: Action<WalletModel, "backup" | "delete" | undefined>;
   setIsNodeInstalled: Action<WalletModel, boolean>;
   setIsNodeRunning: Action<WalletModel, boolean>;
+  setIsTorRunning: Action<WalletModel, boolean>;
   setWalletInitialized: Action<WalletModel, boolean>;
   setInitializingError: Action<WalletModel, boolean>;
   setMessage: Action<WalletModel, string>;
   restartNode: Thunk<WalletModel, undefined, Injections, StoreModel>;
   checkNodeHealth: Thunk<WalletModel, undefined, Injections, StoreModel>;
   reSyncBlockchain: Thunk<WalletModel, undefined, Injections, StoreModel>;
+  scanForOutputs: Thunk<WalletModel, undefined, Injections, StoreModel>;
   initializeWallet: Thunk<WalletModel, undefined, Injections, StoreModel>;
+  getWalletSeed: Thunk<
+    WalletModel,
+    {
+      username: string;
+      password: string;
+    },
+    Injections,
+    StoreModel
+  >;
+  deleteWallet: Thunk<
+    WalletModel,
+    {
+      username: string;
+      password: string;
+    },
+    Injections,
+    StoreModel
+  >;
   replaceLogs: Action<WalletModel, string>;
   updateLogs: Action<WalletModel, string>;
   nodeHealthCheck: boolean;
@@ -28,16 +51,24 @@ export interface WalletModel {
 const wallet: WalletModel = {
   isNodeInstalled: false,
   isNodeRunning: false,
+  isTorRunning: false,
   isWalletInitialized: false,
   nodeHealthCheck: false,
   initializingError: false,
   message: "initializing_node",
   logs: "",
+  action: undefined,
+  setAction: action((state, payload) => {
+    state.action = payload;
+  }),
   setIsNodeInstalled: action((state, payload) => {
     state.isNodeInstalled = payload;
   }),
   setIsNodeRunning: action((state, isRunning) => {
     state.isNodeRunning = isRunning;
+  }),
+  setIsTorRunning: action((state, isRunning) => {
+    state.isTorRunning = isRunning;
   }),
   setInitializingError: action((state, error) => {
     state.initializingError = error;
@@ -65,7 +96,7 @@ const wallet: WalletModel = {
       const { nodeService } = injections;
       const settings = getStoreState().settings.defaultSettings;
 
-      if (nodeService.isNodeRunning(0)) {
+      if (nodeService.isNodeRunning(1)) {
         try {
           new nodeService.REST(
             settings.floonet,
@@ -76,6 +107,7 @@ const wallet: WalletModel = {
           nodeService.stopNode();
         }
       }
+
       getStoreActions().session.clean();
     }
   ),
@@ -90,24 +122,81 @@ const wallet: WalletModel = {
       ).resyncNode();
     }
   ),
+  scanForOutputs: thunk(
+    async (actions, payload, { injections, getStoreState }) => {
+      const { ownerService } = injections;
+      const defaultSettings = getStoreState().settings.defaultSettings;
+      return await new ownerService.RPC(
+        defaultSettings.floonet,
+        defaultSettings.protocol,
+        defaultSettings.ip
+      ).scanOutputs(getStoreState().session.token);
+    }
+  ),
+  getWalletSeed: thunk(
+    async (
+      actions,
+      payload,
+      { injections, getStoreState }
+    ): Promise<string[]> => {
+      const { ownerService } = injections;
+      const apiSettings = getStoreState().settings.defaultSettings;
+      return await new ownerService.RPC(
+        apiSettings.floonet,
+        apiSettings.protocol,
+        apiSettings.ip
+      )
+        .getSeed(payload.username, payload.password)
+        .then((response) => {
+          return response;
+        });
+    }
+  ),
+  deleteWallet: thunk(
+    async (
+      actions,
+      payload,
+      { injections, getStoreState }
+    ): Promise<boolean> => {
+      const { ownerService } = injections;
+      const apiSettings = getStoreState().settings.defaultSettings;
+      return await new ownerService.RPC(
+        apiSettings.floonet,
+        apiSettings.protocol,
+        apiSettings.ip
+      )
+        .deleteWallet(payload.username, payload.password)
+        .then((response) => {
+          return response;
+        });
+    }
+  ),
+
   initializeWallet: thunk(
     async (
       actions,
       payload,
       { injections, getStoreActions }
     ): Promise<boolean> => {
-      const { nodeService, utilsService } = injections;
-      const defaultSettings = nodeService.getDefaultSettings(); // Read defaults.json
+      const { nodeService } = injections;
+
+      let defaultSettings = await nodeService.getDefaultSettings();
 
       nodeService.stopRustNode();
 
       // Check if we can find the node...
-      if (
-        !nodeService.verifyNodePath(
-          defaultSettings.mode,
-          defaultSettings.binaryPath
-        )
-      ) {
+      try {
+        if (
+          !nodeService.verifyNodePath(
+            defaultSettings.mode,
+            defaultSettings.binaryPath
+          )
+        ) {
+          throw new Error(`Can't find path: ${defaultSettings.binaryPath}`);
+        }
+      } catch (error) {
+        require("electron-log").error(`Error running Node: ${error.message}`);
+        actions.setIsNodeInstalled(false);
         actions.setInitializingError(true);
         actions.setWalletInitialized(false);
         actions.setNodeHealthCheck(false);
@@ -124,15 +213,13 @@ const wallet: WalletModel = {
         require("electron-log").info("Running Node...");
         nodeService.runNode(
           defaultSettings.mode,
-          defaultSettings.binaryPath,
+          require("path").normalize(defaultSettings.binaryPath),
           defaultSettings.floonet
         );
       } catch (error) {
         require("electron-log").error(`Error running Node: ${error.message}`);
-      }
 
-      // Let's double check if the Node is running...
-      if (!(await nodeService.isNodeRunning(10))) {
+        actions.setIsNodeInstalled(false);
         actions.setInitializingError(true);
         actions.setWalletInitialized(false);
         actions.setNodeHealthCheck(false);
@@ -140,8 +227,15 @@ const wallet: WalletModel = {
         return false;
       }
 
-      actions.setIsNodeInstalled(true);
-      actions.setIsNodeRunning(true);
+      // Let's double check if the Node is running...
+      if (!(await nodeService.isNodeRunning(30))) {
+        actions.setIsNodeInstalled(false);
+        actions.setInitializingError(true);
+        actions.setWalletInitialized(false);
+        actions.setNodeHealthCheck(false);
+        actions.setMessage("node_is_not_running");
+        return false;
+      }
 
       const settingsActions = getStoreActions().settings;
       settingsActions.setDefaultSettings(defaultSettings); // Update state
@@ -153,17 +247,12 @@ const wallet: WalletModel = {
       );
       settingsActions.setGrinJoinAddress(defaultSettings.grinJoinAddress);
       settingsActions.setGrinChckAddress(defaultSettings.grinChckAddress);
-      // Updating store with server_config.json
-      settingsActions.setMaximumPeers(defaultSettings.maximumPeers);
-      settingsActions.setMininumPeers(defaultSettings.minimumPeers);
-      settingsActions.setConfirmations(defaultSettings.minimumConfirmations);
-
-      getStoreActions().receiveCoinsModel.setResponsesDestination(
-        utilsService.getHomePath()
-      );
-      actions.setInitializingError(false);
+      
+      actions.setIsNodeInstalled(true);
+      actions.setIsNodeRunning(true);
       actions.setWalletInitialized(true);
       actions.setNodeHealthCheck(true);
+      actions.setInitializingError(false);
       actions.setMessage("");
 
       return true;
@@ -179,18 +268,15 @@ const wallet: WalletModel = {
       { injections, getStoreState, getStoreActions }
     ): Promise<boolean> => {
       const { nodeService } = injections;
-      if (!(await nodeService.isNodeRunning(10))) {
-        actions.setInitializingError(true);
-        actions.setWalletInitialized(false);
-        actions.setNodeHealthCheck(false);
-        actions.setMessage("node_is_not_running");
-        return false;
-      }
-      actions.setInitializingError(false);
-      actions.setWalletInitialized(true);
-      actions.setNodeHealthCheck(true);
-      actions.setMessage("");
-      return true;
+
+      actions.setIsTorRunning(await nodeService.isTorRunning(1));
+
+      const isNodeRunning = await nodeService.isNodeRunning(1);
+
+      actions.setNodeHealthCheck(isNodeRunning);
+      actions.setMessage(isNodeRunning ? "" : "node_is_not_running");
+
+      return isNodeRunning;
     }
   ),
 };

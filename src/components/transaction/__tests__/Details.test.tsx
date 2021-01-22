@@ -3,8 +3,8 @@ import { TansactionDetailsComponent, TansactionDetailsProps } from "../Details";
 import React from "react";
 import { render } from "@testing-library/react";
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({t: key => key})
+jest.mock("react-i18next", () => ({
+  useTranslation: () => ({ t: (key) => key }),
 }));
 
 function renderTxDetailsComponent(props: Partial<TansactionDetailsProps> = {}) {
@@ -18,7 +18,7 @@ function renderTxDetailsComponent(props: Partial<TansactionDetailsProps> = {}) {
     fee: "0.008000",
     date: "2020-01-01 00:00",
     onCancelTransactionButtonClickedCb: (transactionId: number) => {},
-    onRepostTransactionButtonClickedCb: (transactionId: number) => {}
+    onRepostTransactionButtonClickedCb: (transactionId: number) => {},
   };
   return render(<TansactionDetailsComponent {...defaultProps} {...props} />);
 }
@@ -26,14 +26,12 @@ function renderTxDetailsComponent(props: Partial<TansactionDetailsProps> = {}) {
 describe("<TansactionDetailsComponent />", () => {
   test("Init state", async () => {
     const { findByTestId } = renderTxDetailsComponent();
-    const id = await findByTestId("id");
     const address = await findByTestId("address");
     const slate = await findByTestId("slate");
     const type = await findByTestId("type");
     const message = await findByTestId("message");
     const fee = await findByTestId("fee");
     const date = await findByTestId("date");
-    expect(id.textContent).toBe("1");
     expect(address.textContent).toBe("OnionV3Address");
     expect(slate.textContent).toBe("S14tE");
     expect(type.textContent).toBe("Sent");

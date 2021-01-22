@@ -169,7 +169,7 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 730,
-    minWidth: 1200,
+    minWidth: 1100,
     minHeight: 730,
     resizable: true,
     frame: false,
@@ -210,7 +210,7 @@ function createWindow() {
   });
 
   mainWindow.on("close", (event) => {
-    if (process.platform === 'darwin' && !appQuitting) {
+    if (process.platform === "darwin" && !appQuitting) {
       event.preventDefault();
       mainWindow.hide();
     }
@@ -223,7 +223,7 @@ function createWindow() {
 
 let nodeClosed = false;
 app.on("before-quit", async (event) => {
-  if (process.platform === 'darwin' && !nodeClosed) {
+  if (process.platform === "darwin" && !nodeClosed) {
     event.preventDefault();
 
     if (!appQuitting) {
@@ -257,7 +257,7 @@ app.on("activate", function() {
 // Quit when all windows are closed.
 app.on("window-all-closed", async (event) => {
   event.preventDefault();
-  if (process.platform !== 'darwin') {
+  if (process.platform !== "darwin") {
     await closeGrinNode(() => {
       log.info("GrinNode stopped. Calling app.quit()");
       app.quit();

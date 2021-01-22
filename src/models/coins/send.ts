@@ -32,6 +32,8 @@ export interface SendCoinsModel {
   error: string;
   waitingResponse: boolean;
   returnedSlatepack: string;
+  slatepackMessageToFinalize: string;
+  setSlatepackMessageToFinalize: Action<SendCoinsModel, string>;
   setReturnedSlatepack: Action<SendCoinsModel, string>;
   setError: Action<SendCoinsModel, string>;
   setStrategy: Action<SendCoinsModel, string>;
@@ -71,7 +73,7 @@ export interface SendCoinsModel {
   estimateFee: Thunk<
     SendCoinsModel,
     {
-      amount: number;
+      amount: number | undefined;
       strategy: string;
       token: string;
       message: string;
@@ -80,22 +82,10 @@ export interface SendCoinsModel {
     Injections,
     StoreModel
   >;
-  sendViaFile: Thunk<
+  sendGrins: Thunk<
     SendCoinsModel,
     {
-      amount: number;
-      strategy: string;
-      inputs: string[];
-      message: string;
-      token: string;
-    },
-    Injections,
-    StoreModel
-  >;
-  sendUsingListener: Thunk<
-    SendCoinsModel,
-    {
-      amount: number;
+      amount: number | undefined;
       address: string;
       message: string;
       method: string;
@@ -124,6 +114,10 @@ const sendCoinsModel: SendCoinsModel = {
   error: "",
   waitingResponse: false,
   returnedSlatepack: "",
+  slatepackMessageToFinalize: "",
+  setSlatepackMessageToFinalize: action((state, slatepack) => {
+    state.slatepackMessageToFinalize = slatepack;
+  }),
   setReturnedSlatepack: action((state, slatepack) => {
     state.returnedSlatepack = slatepack;
   }),
@@ -239,7 +233,7 @@ const sendCoinsModel: SendCoinsModel = {
     async (actions, token, { injections, getStoreActions, getStoreState }) => {
       const { ownerService } = injections;
       const apiSettings = getStoreState().settings.defaultSettings;
-      return await new ownerService.REST(
+      return await new ownerService.RPC(
         apiSettings.floonet,
         apiSettings.protocol,
         apiSettings.ip
@@ -290,132 +284,53 @@ const sendCoinsModel: SendCoinsModel = {
           getStoreActions().sendCoinsModel.setEstimatedFee(
             utilsService.formatGrinAmount(response.fee)
           );
+          getStoreActions().sendCoinsModel.setAmount(
+            utilsService.formatGrinAmount(response.amount).toString()
+          );
         });
     }
   ),
-  sendViaFile: thunk(
-    async (
-      actions,
-      payload,
-      { injections, getStoreState, getStoreActions }
-    ): Promise<boolean> => {
-      const apiSettings = getStoreState().settings.defaultSettings;
-      const { ownerService, utilsService } = injections;
-
-      const file = await utilsService.saveAs(utilsService.getHomePath());
-
-      if (file.canceled) return false;
-
-      return await new ownerService.RPC(
-        apiSettings.floonet,
-        apiSettings.protocol,
-        apiSettings.ip
-      )
-        .sendCoinsViaFile(
-          payload.token,
-          payload.amount,
-          payload.strategy,
-          payload.inputs,
-          payload.message,
-          file.filePath
-        )
-        .then((response) => {
-          utilsService.writeTextFile(file.filePath, JSON.stringify(response));
-          actions.setInitialValues(); // alles gut!
-          return true;
-        })
-        .catch((error) => {
-          throw new Error(error);
-        });
-    }
-  ),
-  sendUsingListener: thunk(
+  sendGrins: thunk(
     async (
       actions,
       payload,
       { injections, getStoreState, getStoreActions }
     ): Promise<string> => {
-      const { ownerService, utilsService, foreignService } = injections;
+      const { ownerService } = injections;
       const defaultSettings = getStoreState().settings.defaultSettings;
 
       let destinationAddress = payload.address.replace(/\/?$/, ""); //removing trailing /
-      const type = utilsService.validateAddress(destinationAddress); // check if the address is valid
-      if (type === false) {
-        return "invalid_destination_address";
-      } else if (type === "http") {
-        // Let's try to reach the wallet first
-        try {
-          if (!(await foreignService.RPC.check(destinationAddress))) {
-            return "not_online";
-          }
-        } catch (error) {
-          return "not_online";
-        }
-      }
 
       try {
-        if (type === "slatepack") {
-          const response = await new ownerService.RPC(
-            defaultSettings.floonet,
-            defaultSettings.protocol,
-            defaultSettings.ip
-          ).sendCoins(
-            payload.token,
-            payload.amount,
-            payload.message,
-            payload.strategy,
-            payload.inputs,
-            payload.method,
-            payload.grinJoinAddress,
-            destinationAddress
-          );
-          if (typeof response === "string") {
-            return response;
-          }
-          actions.setInitialValues(); // alles gut!
+        const response = await new ownerService.RPC(
+          defaultSettings.floonet,
+          defaultSettings.protocol,
+          defaultSettings.ip
+        ).sendCoins(
+          payload.token,
+          payload.amount,
+          payload.message,
+          payload.strategy,
+          payload.inputs,
+          payload.method,
+          payload.grinJoinAddress,
+          destinationAddress
+        );
+        if (typeof response === "string") {
+          return response;
+        }
 
-          if (response.status === "SENT") {
-            actions.setReturnedSlatepack(response.slatepack);
-            return "SENT";
-          } else {
-            return "FINALIZED";
-          }
-        } else if (type === "http") {
-          const send_response = await new ownerService.RPC(
-            defaultSettings.floonet,
-            defaultSettings.protocol,
-            defaultSettings.ip
-          ).sendCoins(
-            payload.token,
-            payload.amount,
-            payload.message,
-            payload.strategy,
-            payload.inputs,
-            payload.method,
-            payload.grinJoinAddress
-          );
-          if (typeof send_response === "string") {
-            return send_response;
-          }
-          const receivedSlate = await foreignService.RPC.receive(
-            destinationAddress,
-            send_response.slate
-          );
-          const finalized = await foreignService.RPC.finalize(
-            "http://localhost:" + getStoreState().session.listener_port,
-            receivedSlate
-          );
-          if (typeof finalized === "string") {
-            return finalized;
-          }
-          actions.setInitialValues(); // alles gut!
+        actions.setInitialValues(); // alles gut!
+
+        if (response.status === "SENT") {
+          actions.setReturnedSlatepack(response.slatepack);
+          return "SENT";
+        } else {
           return "FINALIZED";
         }
       } catch (error) {
         return error;
       }
-
-      return "unkown_error";
     }
   ),
   onStrategyChanged: thunkOn(

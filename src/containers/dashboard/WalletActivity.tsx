@@ -1,9 +1,20 @@
-import { Alert, Intent, Position, Toaster } from "@blueprintjs/core";
+import {
+  Alert,
+  Intent,
+  Position,
+  Toaster,
+  Dialog,
+  Button,
+} from "@blueprintjs/core";
 import React, { useCallback } from "react";
 import { useStoreActions, useStoreState } from "../../hooks";
 
+import { SlatepackComponent } from "../../components/extras/Slatepack";
+
 import { WalletActivityComponent } from "../../components/dashboard/WalletActivity";
 import { useTranslation } from "react-i18next";
+import { HorizontallyCenter, SlatesBox, Title } from "../../components/styled";
+import { validateSlatepack } from "../../services/utils";
 
 export const WalletActivitiyContainer = () => {
   const { t } = useTranslation();
@@ -15,8 +26,11 @@ export const WalletActivitiyContainer = () => {
     getUnconfirmedTransactions,
     getCancelledTransactions,
     getCoinbaseTransactions,
-    selectedTx,
+    selectedTxToCancel,
+    selectedTxToFinalize,
+    selectedSlatepackMessage,
   } = useStoreState((state) => state.walletSummary);
+
   const { token } = useStoreState((state) => state.session);
   const { transactionOpened } = useStoreState((state) => state.ui);
   const { useGrinJoin } = useStoreState((state) => state.settings);
@@ -29,12 +43,38 @@ export const WalletActivitiyContainer = () => {
   const {
     cancelTransaction,
     repostTransaction,
-    setSelectedTx,
+    setSelectedTxToCancel,
+    setSelectedTxToRepost,
+    setSelectedTxToFinalize,
+    setSelectedSlatepackMessage,
   } = useStoreActions((state) => state.walletSummary);
+
+  const { slatepackMessageToFinalize } = useStoreState(
+    (state) => state.sendCoinsModel
+  );
+
+  const { setSlatepackMessageToFinalize } = useStoreActions(
+    (state) => state.sendCoinsModel
+  );
+
+  const { finalizeTxViaSlatepack } = useStoreActions(
+    (actions) => actions.finalizeModel
+  );
+
+  const onViewSlatepackMessageButtonClicked = useCallback(
+    (txId: number) => {
+      const transaction = getAllTransactions.find((t) => t.Id === txId);
+      require("electron-log").info(transaction);
+      if (transaction?.slatepackMessage !== undefined) {
+        setSelectedSlatepackMessage(transaction.slatepackMessage);
+      }
+    },
+    [getAllTransactions, setSelectedSlatepackMessage]
+  );
 
   const onCancelTransactionButtonClicked = useCallback(
     async (txId: number) => {
-      setSelectedTx(-1); // not the best practice, but it's faster
+      setSelectedTxToCancel(-1); // not the best practice, but it's faster
       try {
         require("electron-log").info(`Trying to Cancel Tx with Id: ${txId}`);
         await cancelTransaction({
@@ -46,12 +86,12 @@ export const WalletActivitiyContainer = () => {
         require("electron-log").error(`Error trying to Cancel Tx: ${error}`);
       }
     },
-    [token, cancelTransaction, setSelectedTx]
+    [token, cancelTransaction, setSelectedTxToCancel]
   );
 
   const onRepostTransactionButtonClicked = useCallback(
     async (txId: number, method: string) => {
-      setSelectedTx(-1); // not the best practice, but it's faster
+      setSelectedTxToRepost(-1); // not the best practice, but it's faster
       try {
         require("electron-log").info(`Trying to Repost Tx with Id: ${txId}`);
         await repostTransaction({
@@ -78,11 +118,40 @@ export const WalletActivitiyContainer = () => {
         require("electron-log").error(`Error trying to Repost Tx: ${error}`);
       }
     },
-    [token, repostTransaction, setSelectedTx, t]
+    [token, repostTransaction, setSelectedTxToRepost, t]
+  );
+
+  const finalizeTransaction = useCallback(
+    (slatepack: string) => {
+      finalizeTxViaSlatepack(slatepack).then((result: { error: string }) => {
+        if (result.error == null) {
+          Toaster.create({ position: Position.BOTTOM }).show({
+            message: t("finished_without_errors"),
+            intent: Intent.SUCCESS,
+            icon: "tick-circle",
+          });
+          setSelectedTxToFinalize(-1);
+          setSlatepackMessageToFinalize("");
+        } else {
+          Toaster.create({ position: Position.BOTTOM }).show({
+            message: t("finished_without_errors"),
+            intent: Intent.DANGER,
+            icon: "warning-sign",
+          });
+        }
+      });
+    },
+    [
+      finalizeTxViaSlatepack,
+      t,
+      setSlatepackMessageToFinalize,
+      setSelectedTxToFinalize,
+    ]
   );
 
   return (
     <div>
+      <Title>{t("transactions")}</Title>
       <WalletActivityComponent
         all={getAllTransactions}
         received={getTransactionsReceived}
@@ -92,8 +161,12 @@ export const WalletActivitiyContainer = () => {
         coinbase={getCoinbaseTransactions}
         transactionOpened={transactionOpened}
         openTransactionCb={openTransaction}
-        onCancelTransactionButtonClickedCb={setSelectedTx}
+        onCancelTransactionButtonClickedCb={setSelectedTxToCancel}
+        onFinalizeTransactionButtonClickedCb={setSelectedTxToFinalize}
         onRepostTransactionButtonClickedCb={onRepostTransactionButtonClicked}
+        onViewSlatepackMessageButtonClickedCb={
+          onViewSlatepackMessageButtonClicked
+        }
         method={useGrinJoin ? "JOIN" : "FLUFF"}
         lastConfirmedHeight={lastConfirmedHeight}
         confirmations={confirmations}
@@ -104,12 +177,53 @@ export const WalletActivitiyContainer = () => {
         confirmButtonText="Cancel Transaction"
         icon="warning-sign"
         intent={Intent.WARNING}
-        isOpen={selectedTx > -1}
-        onCancel={() => setSelectedTx(-1)}
-        onConfirm={() => onCancelTransactionButtonClicked(selectedTx)}
+        isOpen={selectedTxToCancel > -1}
+        onCancel={() => setSelectedTxToCancel(-1)}
+        onConfirm={() => onCancelTransactionButtonClicked(selectedTxToCancel)}
       >
         <p>{t("cancelation_confirmation")}</p>
       </Alert>
+      <Dialog
+        title="Slatepack"
+        className="bp3-dark"
+        isOpen={selectedSlatepackMessage.length > 0}
+        onClose={() => {
+          setSelectedSlatepackMessage("");
+        }}
+      >
+        <SlatepackComponent slatepack={selectedSlatepackMessage} />
+      </Dialog>
+      <Dialog
+        title="Slatepack"
+        className="bp3-dark"
+        isOpen={selectedTxToFinalize > -1}
+        onClose={() => {
+          setSelectedTxToFinalize(-1);
+          setSlatepackMessageToFinalize("");
+        }}
+      >
+        <SlatesBox
+          data-testid="slatepack-box"
+          defaultValue={slatepackMessageToFinalize}
+          onChange={(event: React.FormEvent<HTMLTextAreaElement>) => {
+            let target = event.target as HTMLTextAreaElement;
+            setSlatepackMessageToFinalize(target.value);
+          }}
+        ></SlatesBox>
+        <div style={{ marginTop: "5px" }}>
+          <HorizontallyCenter>
+            <Button
+              minimal={true}
+              disabled={validateSlatepack(slatepackMessageToFinalize) === false}
+              intent={Intent.PRIMARY}
+              text={t("finalize")}
+              onClick={() => {
+                finalizeTransaction(slatepackMessageToFinalize);
+              }}
+            />
+          </HorizontallyCenter>
+        </div>
+      </Dialog>
     </div>
   );
 };

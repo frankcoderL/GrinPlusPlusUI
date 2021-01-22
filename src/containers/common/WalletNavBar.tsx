@@ -3,7 +3,7 @@ import {
   Button,
   Navbar,
   NavbarDivider,
-  NavbarGroup
+  NavbarGroup,
 } from "@blueprintjs/core";
 
 import { LanguageMenuContainer } from "./LanguageMenu";
@@ -17,7 +17,7 @@ export const WalletNavBarContainer = () => {
 
   let history = useHistory();
 
-  const { toggleSettings } = useStoreActions(actions => actions.ui);
+  const { toggleSettings } = useStoreActions((actions) => actions.ui);
 
   return (
     <Navbar className="bp3-dark">
@@ -32,7 +32,7 @@ export const WalletNavBarContainer = () => {
         <NavbarDivider />
         <Button
           minimal={true}
-          icon="ip-address"
+          icon="console"
           onClick={() => history.push("/status")}
         />
       </NavbarGroup>
@@ -52,6 +52,11 @@ export const WalletNavBarContainer = () => {
         />
         <NavbarDivider />
         <LanguageMenuContainer />
+        <Button
+          minimal={true}
+          icon="lifesaver"
+          onClick={() => history.push("/help")}
+        />
       </NavbarGroup>
     </Navbar>
   );

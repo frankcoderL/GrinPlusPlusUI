@@ -1,4 +1,4 @@
-import { Button, Intent } from "@blueprintjs/core";
+import { Button, ButtonGroup, Intent } from "@blueprintjs/core";
 
 import React from "react";
 import { useTranslation } from "react-i18next";
@@ -18,6 +18,7 @@ export type TansactionDetailsProps = {
     transactionId: number,
     method: string
   ) => void;
+  onViewSlatepackMessageButtonClickedCb: (transactionId: number) => void;
   kernels?: string[];
   outputs?: {
     amount: number;
@@ -37,6 +38,7 @@ export const TansactionDetailsComponent = ({
   method,
   onCancelTransactionButtonClickedCb,
   onRepostTransactionButtonClickedCb,
+  onViewSlatepackMessageButtonClickedCb,
   kernels,
   outputs,
 }: TansactionDetailsProps) => {
@@ -122,12 +124,6 @@ export const TansactionDetailsComponent = ({
       <div className="divTable">
         <div className="divTableBody">
           <div className="divTableRow">
-            <div className="divTableCell">{t("id")}</div>
-            <div className="divTableCell">
-              <b data-testid="id">{id}</b>
-            </div>
-          </div>
-          <div className="divTableRow">
             <div className="divTableCell">{t("address")}</div>
             <div className="divTableCell">
               <b data-testid="address">{address}</b>
@@ -173,23 +169,55 @@ export const TansactionDetailsComponent = ({
           </div>
         </div>
       </div>
-      <div style={{ textAlign: "center" }}>
+      <div>
         {["sending_not_finalized", "receiving_unconfirmed"].includes(mType) ? (
-          <Button
-            text={t("cancel_transaction")}
-            minimal={true}
-            intent={Intent.WARNING}
-            onClick={() => onCancelTransactionButtonClickedCb(id)}
-          />
+          <span>
+            <ButtonGroup minimal={true}>
+              <Button
+                style={{
+                  marginTop: "5px",
+                  marginLeft: "5px",
+                  marginRight: "5px",
+                }}
+                icon="cross"
+                text={t("cancel_transaction")}
+                minimal={true}
+                intent={Intent.DANGER}
+                onClick={() => onCancelTransactionButtonClickedCb(id)}
+              />
+              <Button
+                icon="document"
+                style={{
+                  marginTop: "5px",
+                  marginLeft: "5px",
+                  marginRight: "5px",
+                }}
+                text={t("view_slatepack")}
+                minimal={true}
+                intent={Intent.NONE}
+                onClick={() => onViewSlatepackMessageButtonClickedCb(id)}
+              />
+            </ButtonGroup>
+          </span>
         ) : mType === "sending_finalized" ? (
           <span>
             <Button
+              style={{
+                marginTop: "5px",
+                marginLeft: "5px",
+                marginRight: "5px",
+              }}
               text={t("cancel_transaction")}
               minimal={true}
-              intent={Intent.WARNING}
+              intent={Intent.DANGER}
               onClick={() => onCancelTransactionButtonClickedCb(id)}
             />
             <Button
+              style={{
+                marginTop: "5px",
+                marginLeft: "5px",
+                marginRight: "5px",
+              }}
               text={t("repost_transaction")}
               minimal={true}
               intent={Intent.WARNING}

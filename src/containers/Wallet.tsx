@@ -1,15 +1,17 @@
 import React, { Suspense, useCallback } from "react";
-import { useStoreActions, useStoreState } from "../hooks";
+import { Toaster, Position, Intent, Alert } from "@blueprintjs/core";
 
+import { ISeed } from "../interfaces/ISeed";
 import { AlertComponent } from "../components/extras/Alert";
 import { LoadingComponent } from "../components/extras/Loading";
-import { Redirect } from "react-router-dom";
 import { PasswordPromptComponent } from "../components/wallet/open/PasswordPrompt";
-import { ISeed } from "../interfaces/ISeed";
-import { Toaster, Position, Intent, Alert } from "@blueprintjs/core";
 import { WalletSeedInputComponent } from "../components/shared/WalletSeedInput";
-import { useTranslation } from "react-i18next";
+
+import { useStoreActions, useStoreState } from "../hooks";
 import { useInterval } from "../helpers";
+
+import { Redirect } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import Log from "electron-log";
 
 const AccountNavBarContainer = React.lazy(() =>
@@ -54,14 +56,16 @@ export const WalletContainer = () => {
     (state) => state.passwordPrompt
   );
   const { setAlert } = useStoreActions((actions) => actions.ui);
-  const { getWalletSeed, setSeed } = useStoreActions((state) => state.session);
+  const { setSeed } = useStoreActions((state) => state.session);
   const {
     updateWalletSummary,
     updateWalletBalance,
     checkWalletAvailability,
   } = useStoreActions((actions) => actions.walletSummary);
-  const { getAddress } = useStoreActions(
-    (actions) => actions.receiveCoinsModel
+
+  const { action } = useStoreState((state) => state.wallet);
+  const { setAction: setWalletAction, getWalletSeed } = useStoreActions(
+    (state) => state.wallet
   );
 
   useInterval(
@@ -80,37 +84,27 @@ export const WalletContainer = () => {
         }
       }
     },
-    5000,
+    2000,
     [token]
   );
 
   useInterval(
     async () => {
-      if (token.length === 0) return;
-      if (!address) return;
+      if (!isLoggedIn) return;
 
-      Log.info("Checking address: " + token);
-      let walletAddress = address;
-      if (walletAddress.length !== 56) {
-        try {
-          walletAddress = await getAddress(token);
-        } catch (error) {
-          Log.error(`Error trying to get Wallet address: ${error.message}`);
-        }
-      }
+      Log.info(`Checking address: http://${address}.onion/`);
 
-      if (walletAddress.length === 56) {
-        try {
-          await checkWalletAvailability(walletAddress);
-        } catch (error) {
-          Log.error(
-            `Error trying to get Wallet Availability: ${error.message}`
-          );
+      try {
+        if (!(await checkWalletAvailability(`http://${address}.onion/`))) {
+          if (!isLoggedIn) return;
+          Log.error("Wallet is not Reachable");
         }
+      } catch (error) {
+        Log.error(`Error trying to get Wallet Availability: ${error.message}`);
       }
     },
     30000,
-    [token]
+    [isLoggedIn]
   );
 
   const backupSeed = useCallback(async () => {
@@ -141,6 +135,8 @@ export const WalletContainer = () => {
         icon: "warning-sign",
       });
     }
+
+    setWalletAction(undefined); // to close prompt
     setUsername(undefined); // to close prompt
     setWaitingResponse(false);
   }, [
@@ -150,6 +146,7 @@ export const WalletContainer = () => {
     setSeed,
     setWaitingResponse,
     setUsername,
+    setWalletAction,
   ]);
 
   return (
@@ -166,16 +163,17 @@ export const WalletContainer = () => {
       <AlertComponent message={alert} setMessage={setAlert} />
       {isLoggedIn ? (
         <PasswordPromptComponent
-          isOpen={username && username.length > 0 ? true : false}
+          isOpen={action !== undefined && username !== undefined}
           username={username ? username : ""}
           password={password ? password : ""}
           passwordCb={(value: string) => setPassword(value)}
           onCloseCb={() => {
             setUsername(undefined);
             setPassword(undefined);
+            setWalletAction(undefined);
           }}
           waitingResponse={waitingResponse}
-          passwordButtonCb={backupSeed}
+          passwordButtonCb={action === "backup" ? backupSeed : undefined}
           connected={status.toLocaleLowerCase() !== "not connected"}
           buttonText={t("confirm_password")}
         />
@@ -189,11 +187,13 @@ export const WalletContainer = () => {
             setSeed(undefined);
             setUsername(undefined);
             setPassword(undefined);
+            setWalletAction(undefined);
           }}
           onCancel={() => {
             setSeed(undefined);
             setUsername(undefined);
             setPassword(undefined);
+            setWalletAction(undefined);
           }}
           isOpen={seed !== undefined}
           style={{ backgroundColor: "#050505" }}

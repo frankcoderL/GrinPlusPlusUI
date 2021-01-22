@@ -25,10 +25,28 @@ export const Flex = styled.section`
 `;
 
 export const SlatesBox = styled.textarea`
-  font-size: 13px;
+  font-size: 12px;
+  width: 98%;
+  min-height: 400px;
+  max-height: 400px;
+  background-color: #171920;
+  overflow-y: auto;
+  border-radius: 3px;
+  padding: 10px;
+  font-family: Courier New;
+  white-space: pre-line;
+  color: #ffffff;
+  resize: none;
+  display: block;
+  margin: 0 auto;
+`;
+
+export const TextFileBox = styled.textarea`
+  margin: 10px;
+  font-size: 12.5px;
   width: 100%;
-  min-height: 140px;
-  max-height: 140px;
+  min-height: 100%;
+  max-height: 100%;
   background-color: #171920;
   overflow-y: auto;
   border-radius: 3px;
@@ -39,26 +57,39 @@ export const SlatesBox = styled.textarea`
   resize: none;
 `;
 
-export const LargeSlatesBox = styled.textarea`
-  font-size: 13px;
-  width: 500px;
-  min-height: 300px;
-  max-height: 300px;
-  background-color: #171920;
-  overflow-y: auto;
-  border-radius: 3px;
-  padding: 10px;
-  font-family: Courier New;
-  white-space: pre-line;
-  color: #ffffff;
-  resize: none;
-`;
-
-export const LogsBox = styled.textarea`
+export const WalletLogsBox = styled.textarea`
   display: block;
   font-size: 13px;
   width: 100%;
-  height: 100%;
+  height: 100px;
+  background-color: #171920;
+  overflow-y: auto;
+  border-radius: 3px;
+  padding: 10px;
+  font-family: Courier New;
+  white-space: pre-line;
+  color: #ffffff;
+`;
+
+export const NodeLogsBox = styled.textarea`
+  display: block;
+  font-size: 13px;
+  width: 100%;
+  height: 100px;
+  background-color: #171920;
+  overflow-y: auto;
+  border-radius: 3px;
+  padding: 10px;
+  font-family: Courier New;
+  white-space: pre-line;
+  color: #ffffff;
+`;
+
+export const RendererLogsBox = styled.textarea`
+  display: block;
+  font-size: 13px;
+  width: 100%;
+  height: 100px;
   background-color: #171920;
   overflow-y: auto;
   border-radius: 3px;
@@ -69,14 +100,14 @@ export const LogsBox = styled.textarea`
 `;
 
 export const Title = styled.section`
-  font-size: 24px;
-  color: #ffff14 !important;
+  font-size: 21px;
+  color: #a3a3a3 !important;
 `;
 
 export const Content = styled.section`
-  display: flex;
+  display: block;
   margin: 0 auto;
-  width: 100%;
+  width: 95%;
 `;
 
 export const StatusBarContent = styled.section`
@@ -94,6 +125,7 @@ export const StatusBarContent = styled.section`
 
 export const SpendableBalance = styled.section`
   font-size: 30px;
+  color: #ffff00;
 `;
 
 export const BalanceSuffix = styled.section`
@@ -118,7 +150,9 @@ export const Dropper = styled.section`
 `;
 
 export const WalletUsername = styled.section`
-  font-size: 18px;
+  font-size: 21px;
+  vertical-align: middle;
+  color: #ffff00;
 `;
 
 export const AccountListContent = styled.section`
@@ -146,24 +180,10 @@ export const SendGrinsContent = styled.section`
   padding: 20px;
 `;
 
-export const SendGrinTopRow = styled.section`
-  overflow: auto;
-  width: 100%;
-  padding-top: 10px;
-`;
-
 export const Left = styled.section`
-  display: block;
-  width: 50%;
-  margin: 0;
-  padding: 0;
   float: left;
 `;
 
 export const Right = styled.section`
-  display: block;
-  width: 50%;
-  margin: 0;
-  padding: 0;
   float: right;
 `;

@@ -9,8 +9,10 @@ export interface SessionModel {
   token: string;
   address: string;
   setAddress: Action<SessionModel, string>;
-  slatepack_address: string;
-  listener_port: number;
+  slatepackAddress: string;
+  listenerPort: number;
+  encodedAddress: string;
+  displayQRCode: boolean;
   updateSession: Action<
     SessionModel,
     {
@@ -23,26 +25,21 @@ export interface SessionModel {
   >;
   logout: Thunk<SessionModel, string, Injections, StoreModel>;
   isLoggedIn: Computed<SessionModel, boolean>;
-  getWalletSeed: Thunk<
-    SessionModel,
-    {
-      username: string;
-      password: string;
-    },
-    Injections,
-    StoreModel
-  >;
   seed: ISeed[] | undefined;
   setSeed: Action<SessionModel, ISeed[] | undefined>;
   clean: Thunk<SessionModel, undefined, Injections, StoreModel>;
+  setEncodedAddress: Action<SessionModel, string>;
+  setDisplayQRCode: Action<SessionModel, boolean>;
 }
 
 const session: SessionModel = {
   username: "",
   token: "",
   address: "",
-  listener_port: 0,
-  slatepack_address: "",
+  listenerPort: 0,
+  slatepackAddress: "",
+  encodedAddress: "",
+  displayQRCode: false,
   setAddress: action((state, payload) => {
     state.address = payload;
   }),
@@ -50,8 +47,8 @@ const session: SessionModel = {
     state.username = payload.username;
     state.token = payload.token;
     state.address = payload.address;
-    state.listener_port = payload.listener_port;
-    state.slatepack_address = payload.slatepack_address;
+    state.listenerPort = payload.listener_port;
+    state.slatepackAddress = payload.slatepack_address;
   }),
   logout: thunk(
     async (actions, token, { injections, getStoreState, getStoreActions }) => {
@@ -61,35 +58,13 @@ const session: SessionModel = {
         apiSettings.floonet,
         apiSettings.protocol,
         apiSettings.ip
-      )
-        .logout(token)
-        .then((response) => {
-          actions.clean();
-        });
+      ).logout(token);
+      actions.clean();
     }
   ),
   isLoggedIn: computed((state) => {
     return state.username.length > 0 && state.token.length > 0;
   }),
-  getWalletSeed: thunk(
-    async (
-      actions,
-      payload,
-      { injections, getStoreState }
-    ): Promise<string[]> => {
-      const { ownerService } = injections;
-      const apiSettings = getStoreState().settings.defaultSettings;
-      return await new ownerService.RPC(
-        apiSettings.floonet,
-        apiSettings.protocol,
-        apiSettings.ip
-      )
-        .getSeed(payload.username, payload.password)
-        .then((response) => {
-          return response;
-        });
-    }
-  ),
   seed: undefined,
   setSeed: action((state, seed) => {
     state.seed = seed;
@@ -98,15 +73,30 @@ const session: SessionModel = {
     getStoreActions().ui.toggleSettings(false);
     getStoreActions().walletSummary.updateBalance(undefined);
     getStoreActions().walletSummary.updateSummary(undefined);
-    getStoreActions().walletSummary.setSelectedTx(-1);
+    getStoreActions().walletSummary.clearWalletReachable(undefined);
+    getStoreActions().walletSummary.setSelectedTxToCancel(-1);
+    getStoreActions().walletSummary.setSelectedTxToFinalize(-1);
+    getStoreActions().walletSummary.setSelectedTxToRepost(-1);
+    getStoreActions().wallet.setAction(undefined);
     getStoreActions().wallet.replaceLogs("");
-    getStoreActions().finalizeModel.setResponseFile(undefined);
     getStoreActions().sendCoinsModel.setInitialValues();
     getStoreActions().createWallet.setInitialValues();
     getStoreActions().restoreWallet.setInitialValues();
     getStoreActions().signinModel.setAccounts(undefined);
     getStoreActions().ui.setAlert(undefined);
-    actions.updateSession({ username: "", token: "", address: "", listener_port: 0, slatepack_address: "" });
+    actions.updateSession({
+      username: "",
+      token: "",
+      address: "",
+      listener_port: 0,
+      slatepack_address: "",
+    });
+  }),
+  setDisplayQRCode: action((state, payload) => {
+    state.displayQRCode = payload;
+  }),
+  setEncodedAddress: action((state, payload) => {
+    state.encodedAddress = payload;
   }),
 };
 

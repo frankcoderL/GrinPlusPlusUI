@@ -20,7 +20,9 @@ export const SettingsContainer = () => {
     (state) => state.session
   );
 
-  const { setUsername } = useStoreActions((state) => state.passwordPrompt);
+  const { setUsername: setPasswordPromptUsername } = useStoreActions(
+    (state) => state.passwordPrompt
+  );
   const {
     setMininumPeers,
     setMaximumPeers,
@@ -30,9 +32,14 @@ export const SettingsContainer = () => {
     toggleConfirmationDialog,
     setGrinChckAddress,
   } = useStoreActions((actions) => actions.settings);
-  const { reSyncBlockchain, restartNode } = useStoreActions(
-    (state) => state.wallet
-  );
+
+  const {
+    reSyncBlockchain,
+    restartNode,
+    scanForOutputs,
+    setAction: setWalletAction,
+  } = useStoreActions((state) => state.wallet);
+
   const { toggleSettings } = useStoreActions((actions) => actions.ui);
 
   const toggleDialog = useCallback(() => {
@@ -74,12 +81,23 @@ export const SettingsContainer = () => {
       setMaximumPeersCb={setMaximumPeers}
       setConfirmationsCb={setConfirmations}
       toggleConfirmationDialogCb={toggleDialog}
-      confirmReSyncBlockchainCb={confirmReSyncBlockchain}
-      restartNodeCb={restartGrinNode}
+      confirmReSyncBlockchainCb={() => {
+        toggleSettings(false);
+        confirmReSyncBlockchain();
+      }}
+      restartNodeCb={() => {
+        toggleSettings(false);
+        restartGrinNode();
+      }}
+      scanForOutputsCb={() => {
+        toggleSettings(false);
+        scanForOutputs();
+      }}
       isLoggedIn={isLoggedIn}
       backupButtonCb={() => {
         toggleSettings(false);
-        setUsername(sessionUsername);
+        setPasswordPromptUsername(sessionUsername);
+        setWalletAction("backup");
       }}
     />
   );
